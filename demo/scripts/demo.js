@@ -66,6 +66,18 @@ angular.module('app', [
         title: 'layouts explicit saving',
         description: 'This demo showcases dashboard layouts with explicit saving enabled.'
       })
+        .when('/layouts/grouped-layouts', {
+            templateUrl: 'groupedLayouts.html',
+            controller: 'GroupedLayoutsDemoCtrl',
+            title: 'grouped layouts',
+            description: 'This demo showcases dashboard layouts grouped'
+        })
+        .when('/layouts/grouped-layouts-home', {
+            templateUrl: 'groupedLayoutsHome.html',
+            controller: 'GroupedLayoutsHomeDemoCtrl',
+            title: 'grouped layouts with home',
+            description: 'This demo showcases dashboard layouts grouped with a home layout'
+        })
       .otherwise({
         redirectTo: '/'
       });
