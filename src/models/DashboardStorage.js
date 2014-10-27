@@ -37,6 +37,9 @@ angular.module('ui.dashboard')
                     stringifyStorage: true
                 };
 
+                console.log(defaults)
+                console.log(options)
+
                 angular.extend(defaults, options);
                 angular.extend(options, defaults);
 
@@ -47,6 +50,8 @@ angular.module('ui.dashboard')
                 this.defaultGroupLayouts = options.defaultGroupLayouts;
                 this.lockDefaultGroupLayouts = options.lockDefaultGroupLayouts;
                 this.widgetDefinitions = options.widgetDefinitions;
+                this.options = options;
+                this.options.unsavedChangeCount = 0;
 
                 this.groups = [];
                 this.states = {};
@@ -55,31 +60,60 @@ angular.module('ui.dashboard')
             };
             DashboardStorage.prototype = {
 
-                add: function(groups){
+                add: function (groups) {
                     if (!angular.isArray(groups)) {
                         groups = [groups];
                     }
                     var self = this;
 
-                    angular.forEach(groups, function(group){
+                    angular.forEach(groups, function (group) {
                         group.layoutGroups = group.layoutGroups ? group.layoutGroups : [];
                         self.groups.push(group);
                     })
                 },
 
-                addLayoutGroups: function(groups) {
+                remove: function(group) {
+                    var index = this.groups.indexOf(group);
+                    if (index >= 0 && (angular.isUndefined(group.layoutGroups) || group.layoutGroups.length === 0)) {
+                        this.groups.splice(index, 1);
+                        delete this.states[group.id];
+
+                        // check for active
+                        if (group.active && this.groups.length) {
+                            var nextActive = index > 0 ? index - 1 : 0;
+                            this.groups[nextActive].active = true;
+                        }
+                    }
+                },
+
+                save: function() {
+
+                    var state = {
+                        dashboard: this._serializeGroups(),
+                        storageHash: this.storageHash
+                    };
+
+                    if (this.stringifyStorage) {
+                        state = JSON.stringify(state);
+                    }
+
+                    this.storage.setItem(this.id, state);
+                    this.options.unsavedChangeCount = 0;
+                },
+
+                addLayoutGroups: function (groups) {
                     if (!angular.isArray(groups)) {
                         groups = [groups];
                     }
                     var self = this;
-                    angular.forEach(groups, function(group) {
+                    angular.forEach(groups, function (group) {
 // groupTitle
                         group.layouts = [];
 
-                        angular.forEach(group.layoutGroups, function(layoutGroup){
+                        angular.forEach(group.layoutGroups, function (layoutGroup) {
                             //layoutGroupTitle
 
-                            angular.forEach(layoutGroup.layoutCollections, function(layoutCollection){
+                            angular.forEach(layoutGroup.layoutCollections, function (layoutCollection) {
                                 // layoutCollectionTitle
 
                                 var layoutOptions = {
@@ -104,7 +138,11 @@ angular.module('ui.dashboard')
                     var serialized = this.storage.getItem(this.id);
 
                     if (serialized) {
-                        this._handleSyncLoad(serialized);
+                        if (angular.isObject(serialized) && angular.isFunction(serialized.then)) {
+                            this._handleAsyncLoad(serialized);
+                        } else {
+                            this._handleSyncLoad(serialized);
+                        }
                     }
                     else {
                         this._addDefaultGroupLayouts();
@@ -143,15 +181,31 @@ angular.module('ui.dashboard')
                     this.save();
                 },
                 _addDefaultGroupLayouts: function () {
+
                     var self = this;
                     var defaults = this.lockDefaultLayouts ? {locked: true} : {};
 
-                    angular.forEach(this.defaultGroupLayouts.groups, function(group){
+                    angular.forEach(this.defaultGroupLayouts.groups, function (group) {
                         self.add(angular.extend(_.clone(defaults), group));
                     })
                 },
 
-                _handleSyncLoad: function(serialized) {
+                _serializeGroups: function() {
+                    var result = {
+                        groups: []
+                    };
+                    angular.forEach(this.groups, function(l) {
+                        result.groups.push({
+                            title: l.groupTitle,
+                            id: l.id,
+                            active: l.active,
+                            locked: l.locked
+                        });
+                    });
+                    return result;
+                },
+
+                _handleSyncLoad: function (serialized) {
 
                     var deserialized;
 
@@ -176,6 +230,14 @@ angular.module('ui.dashboard')
                     }
                     this.states = deserialized.states;
                     this.add(deserialized.groups);
+                },
+
+                _handleAsyncLoad: function(promise) {
+                    var self = this;
+                    promise.then(
+                        angular.bind(self, this._handleSyncLoad),
+                        angular.bind(self, this._addDefaultGroupLayouts)
+                    );
                 }
             };
 
