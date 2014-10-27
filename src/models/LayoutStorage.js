@@ -17,7 +17,7 @@
 'use strict';
 
 angular.module('ui.dashboard')
-  .factory('LayoutStorage', function() {
+  .service('LayoutStorage', function() {
 
     var noopStorage = {
       setItem: function() {

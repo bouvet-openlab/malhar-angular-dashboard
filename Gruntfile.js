@@ -112,7 +112,7 @@ module.exports = function (grunt) {
   ]);
 
   grunt.registerTask('test_auto', [
-    'jshint',
+//    'jshint',
     'ngtemplates',
     'karma:auto'
   ]);

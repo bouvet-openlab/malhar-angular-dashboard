@@ -3,12 +3,12 @@
 describe('Factory: LayoutStorage', function () {
 
   // mock UI Sortable
-  beforeEach(function () {
+  beforeEach(function () {;
     angular.module('ui.sortable', []);
   });
 
   // load the service's module
-  beforeEach(module('ui.dashboard'));
+    beforeEach(module('ui.dashboard'))
 
   // instantiate service
   var LayoutStorage;

@@ -302,6 +302,28 @@ angular.module('ui.dashboard')
  * Created by eibel on 27.10.2014.
  */
 
+'use strict';
+
+angular.module('ui.dashboard')
+    .directive('dashboardGroupedLayouts', [
+        'DashboardStorage', function (DashboardStorage) {
+            return {
+                scope: true,
+                templateUrl: function (element, attr) {
+                    return attr.templateUrl ? attr.templateUrl : 'template/dashboard-grouped-layouts.html';
+                },
+                link: function (scope, element, attrs) {
+
+                    scope.options = scope.$eval(attrs.dashboardLayouts);
+
+                    var dashboardStorage = new DashboardStorage(scope.options);
+
+                    scope.groups = dashboardStorage.groups;
+                }
+            };
+        }
+    ]
+);
 /*
  * Copyright (c) 2014 DataTorrent, Inc. ALL Rights Reserved.
  *
@@ -514,6 +536,190 @@ angular.module('ui.dashboard')
     };
   }]);
 
+/**
+ * Created by eibel on 27.10.2014.
+ */
+'use strict';
+
+
+angular.module('ui.dashboard')
+    .factory('DashboardStorage', [
+        'LayoutStorage', function (LayoutStorage) {
+            var noopStorage = {
+                setItem: function () {
+
+                },
+                getItem: function () {
+
+                },
+                removeItem: function () {
+
+                }
+            };
+            var layoutstore = {
+                setItem: function () {
+
+                },
+                getItem: function () {
+
+                },
+                removeItem: function () {
+
+                }
+            };
+
+            function DashboardStorage(options) {
+
+                var defaults = {
+                    storage: noopStorage,
+                    stringifyStorage: true
+                };
+
+                angular.extend(defaults, options);
+                angular.extend(options, defaults);
+
+                this.id = options.storageId;
+                this.storage = options.storage;
+                this.storageHash = options.storageHash;
+                this.stringifyStorage = options.stringifyStorage;
+                this.defaultGroupLayouts = options.defaultGroupLayouts;
+                this.lockDefaultGroupLayouts = options.lockDefaultGroupLayouts;
+                this.widgetDefinitions = options.widgetDefinitions;
+
+                this.groups = [];
+                this.states = {};
+
+                this.load();
+            };
+            DashboardStorage.prototype = {
+
+                add: function(groups){
+                    if (!angular.isArray(groups)) {
+                        groups = [groups];
+                    }
+                    var self = this;
+
+                    angular.forEach(groups, function(group){
+                        group.layoutGroups = group.layoutGroups ? group.layoutGroups : [];
+                        self.groups.push(group);
+                    })
+                },
+
+                addLayoutGroups: function(groups) {
+                    if (!angular.isArray(groups)) {
+                        groups = [groups];
+                    }
+                    var self = this;
+                    angular.forEach(groups, function(group) {
+// groupTitle
+                        group.layouts = [];
+
+                        angular.forEach(group.layoutGroups, function(layoutGroup){
+                            //layoutGroupTitle
+
+                            angular.forEach(layoutGroup.layoutCollections, function(layoutCollection){
+                                // layoutCollectionTitle
+
+                                var layoutOptions = {
+                                    storage: layoutstore,
+                                    storageId: layoutCollection.storageId,
+                                    widgetDefinitions: self.widgetDefinitions,
+                                    stringifyStorage: false,
+                                    explicitSave: true,
+                                    defaultWidgets: [],
+                                    widgetButtons: true
+                                };
+
+                                var layout = new LayoutStorage(layoutOptions);
+
+                                group.layouts.push(layout);
+                            })
+                        });
+                    });
+                },
+                load: function () {
+
+                    var serialized = this.storage.getItem(this.id);
+
+                    if (serialized) {
+                        this._handleSyncLoad(serialized);
+                    }
+                    else {
+                        this._addDefaultGroupLayouts();
+                    }
+//
+//                    this.clear();
+//
+//                    if (serialized) {
+//                        // check for promise
+//                        if (angular.isObject(serialized) && angular.isFunction(serialized.then)) {
+//                            this._handleAsyncLoad(serialized);
+//                        } else {
+//                            this._handleSyncLoad(serialized);
+//                        }
+//                    } else {
+//                        this._addDefaultLayouts();
+//                    }
+                },
+
+                clear: function () {
+                    this.layouts = [];
+                    this.states = {};
+                },
+
+                setItem: function (id, value) {
+                    this.states[id] = value;
+                    this.save();
+                },
+
+                getItem: function (id) {
+                    return this.states[id];
+                },
+
+                removeItem: function (id) {
+                    delete this.states[id];
+                    this.save();
+                },
+                _addDefaultGroupLayouts: function () {
+                    var self = this;
+                    var defaults = this.lockDefaultLayouts ? {locked: true} : {};
+
+                    angular.forEach(this.defaultGroupLayouts.groups, function(group){
+                        self.add(angular.extend(_.clone(defaults), group));
+                    })
+                },
+
+                _handleSyncLoad: function(serialized) {
+
+                    var deserialized;
+
+                    if (this.stringifyStorage) {
+                        try {
+
+                            deserialized = JSON.parse(serialized);
+
+                        } catch (e) {
+                            this._addDefaultGroupLayouts();
+                            return;
+                        }
+                    } else {
+
+                        deserialized = serialized;
+
+                    }
+
+                    if (this.storageHash !== deserialized.storageHash) {
+                        this._addDefaultGroupLayouts();
+                        return;
+                    }
+                    this.states = deserialized.states;
+                    this.add(deserialized.groups);
+                }
+            };
+
+            return DashboardStorage;
+        }
+    ]);
 /*
  * Copyright (c) 2014 DataTorrent, Inc. ALL Rights Reserved.
  *
@@ -533,7 +739,7 @@ angular.module('ui.dashboard')
 'use strict';
 
 angular.module('ui.dashboard')
-  .factory('LayoutStorage', function() {
+  .service('LayoutStorage', function() {
 
     var noopStorage = {
       setItem: function() {
@@ -1557,6 +1763,64 @@ angular.module("ui.dashboard").run(["$templateCache", function($templateCache) {
     "\n" +
     "</div>\r" +
     "\n"
+  );
+
+  $templateCache.put("template/dashboard-grouped-layouts.html",
+    "<!--<ul ui-sortable=\"sortableOptions\" ng-model=\"layouts\" class=\"nav nav-tabs layout-tabs\">-->\r" +
+    "\n" +
+    "<!--<li ng-repeat=\"layout in layouts\" ng-class=\"{ active: layout.active }\">-->\r" +
+    "\n" +
+    "<!--<a ng-click=\"makeLayoutActive(layout)\">-->\r" +
+    "\n" +
+    "<!--<span ng-dblclick=\"editTitle(layout)\" ng-show=\"!layout.editingTitle\">{{layout.title}}</span>-->\r" +
+    "\n" +
+    "<!--<form action=\"\" class=\"layout-title\" ng-show=\"layout.editingTitle\" ng-submit=\"saveTitleEdit(layout)\">-->\r" +
+    "\n" +
+    "<!--<input type=\"text\" ng-model=\"layout.title\" class=\"form-control\" data-layout=\"{{layout.id}}\">-->\r" +
+    "\n" +
+    "<!--</form>-->\r" +
+    "\n" +
+    "<!--<span ng-if=\"!layout.locked\" ng-click=\"removeLayout(layout)\" class=\"glyphicon glyphicon-remove remove-layout-icon\"></span>-->\r" +
+    "\n" +
+    "<!--&lt;!&ndash; <span class=\"glyphicon glyphicon-pencil\"></span> &ndash;&gt;-->\r" +
+    "\n" +
+    "<!--&lt;!&ndash; <span class=\"glyphicon glyphicon-remove\"></span> &ndash;&gt;-->\r" +
+    "\n" +
+    "<!--</a>-->\r" +
+    "\n" +
+    "<!--</li>-->\r" +
+    "\n" +
+    "<!--<li>-->\r" +
+    "\n" +
+    "<!--<a ng-click=\"createNewLayout()\">-->\r" +
+    "\n" +
+    "<!--<span class=\"glyphicon glyphicon-plus\"></span>-->\r" +
+    "\n" +
+    "<!--</a>-->\r" +
+    "\n" +
+    "<!--</li>-->\r" +
+    "\n" +
+    "<!--</ul>-->\r" +
+    "\n" +
+    "<!--<div ng-repeat=\"layout in layouts | filter:isActive\" dashboard=\"layout.dashboard\" template-url=\"template/dashboard.html\"></div>-->\r" +
+    "\n" +
+    "\r" +
+    "\n" +
+    "<ul ng-model=\"groups\" class=\"nav nav-tabs group-tabs\">\r" +
+    "\n" +
+    "    <li ng-repeat=\"group in groups\">\r" +
+    "\n" +
+    "        <ul>\r" +
+    "\n" +
+    "            <li>group.title</li>\r" +
+    "\n" +
+    "            <li ng-repeat=\"layoutGroup in group.layoutGroups\">layoutGroup.title</li>\r" +
+    "\n" +
+    "        </ul>\r" +
+    "\n" +
+    "    </li>\r" +
+    "\n" +
+    "</ul>"
   );
 
   $templateCache.put("template/dashboard-layouts.html",

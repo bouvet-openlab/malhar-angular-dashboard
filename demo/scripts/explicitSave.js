@@ -18,6 +18,8 @@
 
 angular.module('app')
   .controller('ExplicitSaveDemoCtrl', function ($scope, $interval, $window, widgetDefinitions, defaultWidgets) {
+        console.log($scope)
+
     $scope.dashboardOptions = {
       widgetButtons: true,
       widgetDefinitions: widgetDefinitions,

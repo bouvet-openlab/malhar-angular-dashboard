@@ -4,8 +4,10 @@
 
 'use strict';
 
-angular.module('app').controller('GroupedLayoutsDemoCtrl', [
+angular.module('app').controller('GroupedLayoutsDemoCtrl',
     function ($scope, $interval, $window, widgetDefinitions, defaultWidgets) {
+        console.log($scope)
+
         $scope.layoutOptions = {
             storageId: 'demo-grouped-layouts',
             storage: localStorage,
@@ -93,5 +95,5 @@ angular.module('app').controller('GroupedLayoutsDemoCtrl', [
             $scope.randomValue = Math.random();
         }, 500);
     }
-])
+)
 ;
