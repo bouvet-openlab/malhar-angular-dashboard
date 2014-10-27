@@ -298,6 +298,10 @@ angular.module('ui.dashboard')
     };
   }]);
 
+/**
+ * Created by eibel on 27.10.2014.
+ */
+
 /*
  * Copyright (c) 2014 DataTorrent, Inc. ALL Rights Reserved.
  *
