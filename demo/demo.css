@@ -8,6 +8,9 @@ a {
 .layout-tabs {
     margin-bottom: 10px;
 }
+.group-tabs {
+    margin-bottom: 10px;
+}
 
 .demo-widget-fluid {
     border: 1px solid blue;

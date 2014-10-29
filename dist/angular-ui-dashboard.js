@@ -306,19 +306,63 @@ angular.module('ui.dashboard')
 
 angular.module('ui.dashboard')
     .directive('dashboardGroupedLayouts', [
-        'DashboardStorage', function (DashboardStorage) {
+        'DashboardStorage', '$timeout', function (DashboardStorage, $timeout) {
             return {
                 scope: true,
                 templateUrl: function (element, attr) {
                     return attr.templateUrl ? attr.templateUrl : 'template/dashboard-grouped-layouts.html';
                 },
                 link: function (scope, element, attrs) {
-
                     scope.options = scope.$eval(attrs.dashboardLayouts);
 
-                    var dashboardStorage = new DashboardStorage(scope.options);
+                    var dashboardStorage = new DashboardStorage(scope.groupOptions);
 
                     scope.groups = dashboardStorage.groups;
+
+                    scope.editTitle = function (group) {
+                        if (group.locked) {
+                            return;
+                        }
+
+                        var input = element.find('input[data-layout="' + group.id + '"]');
+                        group.editingTitle = true;
+
+                        $timeout(function () {
+//                            input.focus()[0].setSelectionRange(0, 9999);
+                        });
+                    };
+
+                    scope.saveTitleEdit = function (group) {
+                        group.editingTitle = false;
+
+                        dashboardStorage.save();
+                    };
+
+                    scope.createNewGroup = function(){
+                        var group = {groupTitle: 'Custom Group', layoutGroups: []};
+                        dashboardStorage.add(group);
+                        dashboardStorage.save();
+
+                        return group;
+                    };
+
+                    scope.removeGroup = function(group){
+                        dashboardStorage.remove(group);
+                        dashboardStorage.save();
+                    };
+
+                    scope.createNewLayoutGroup = function (group) {
+                        var layoutGroup = {layoutGroupTitle: 'Custom Layout Group', layoutCollections: []};
+                        dashboardStorage.addLayoutGroup(group, layoutGroup);
+                        dashboardStorage.save();
+
+                        return layoutGroup;
+                    }
+
+                    scope.removeLayoutGroup = function(layoutGroup){
+                        dashboardStorage.removeLayoutGroup(layoutGroup);
+                        dashboardStorage.save();
+                    }
                 }
             };
         }
@@ -556,17 +600,6 @@ angular.module('ui.dashboard')
 
                 }
             };
-            var layoutstore = {
-                setItem: function () {
-
-                },
-                getItem: function () {
-
-                },
-                removeItem: function () {
-
-                }
-            };
 
             function DashboardStorage(options) {
 
@@ -574,9 +607,6 @@ angular.module('ui.dashboard')
                     storage: noopStorage,
                     stringifyStorage: true
                 };
-
-                console.log(defaults)
-                console.log(options)
 
                 angular.extend(defaults, options);
                 angular.extend(options, defaults);
@@ -588,15 +618,35 @@ angular.module('ui.dashboard')
                 this.defaultGroupLayouts = options.defaultGroupLayouts;
                 this.lockDefaultGroupLayouts = options.lockDefaultGroupLayouts;
                 this.widgetDefinitions = options.widgetDefinitions;
+                this.explicitSave = options.explicitSave;
                 this.options = options;
                 this.options.unsavedChangeCount = 0;
 
                 this.groups = [];
-                this.states = {};
+                this.layoutStates = {};
+
+                this.internalLayoutStorage = {
+                    setItem: function (id, value) {
+                        console.log('set id', id, 'to value', value);
+                        this.layoutStates[id] = value;
+                    },
+                    getItem: function (id) {
+                        console.log('layoutStates', this.layoutStates);
+                        console.log('get by id', id);
+                        return this.layoutStates[id];
+                    },
+                    removeItem: function (id) {
+                        console.log('remove by id', id);
+                        this.layoutStates[id] = undefined;
+                    }
+                };
 
                 this.load();
             };
             DashboardStorage.prototype = {
+                getInternalLayoutStorage: function(){
+                    return this.internalLayoutStorage;
+                },
 
                 add: function (groups) {
                     if (!angular.isArray(groups)) {
@@ -605,16 +655,44 @@ angular.module('ui.dashboard')
                     var self = this;
 
                     angular.forEach(groups, function (group) {
-                        group.layoutGroups = group.layoutGroups ? group.layoutGroups : [];
+                        group.id = self._getGroupId(group);
+                        group.layoutGroups = group.layoutGroups || [];
+
                         self.groups.push(group);
                     })
                 },
 
-                remove: function(group) {
+                addLayoutGroup: function (group, layoutGroups) {
+
+                    if (group && layoutGroups) {
+                        if (!angular.isArray(layoutGroups)) {
+                            layoutGroups = [layoutGroups];
+                        }
+
+                        var self = this;
+                        if (this.groups.indexOf(group) >= 0) {
+                            angular.forEach(layoutGroups, function (layoutGroup) {
+                                layoutGroup.id = self._getLayoutGroupId(layoutGroup);
+                                layoutGroup.layoutOptions = layoutGroup.layoutOptions || {
+                                    storageId: self.id + '-' + group.id + '-' + layoutGroup.id + '-layouts',
+                                    storage: self.internalLayoutStorage,
+                                    storageHash: self.storageHash,
+                                    widgetDefinitions: self.widgetDefinitions,
+                                    defaultWidgets: [],
+                                    explicitSave: self.explicitSave,
+                                    defaultLayouts: []
+                                };
+
+                                group.layoutGroups.push(layoutGroup);
+                            });
+                        }
+                    }
+                },
+
+                remove: function (group) {
                     var index = this.groups.indexOf(group);
                     if (index >= 0 && (angular.isUndefined(group.layoutGroups) || group.layoutGroups.length === 0)) {
                         this.groups.splice(index, 1);
-                        delete this.states[group.id];
 
                         // check for active
                         if (group.active && this.groups.length) {
@@ -624,12 +702,26 @@ angular.module('ui.dashboard')
                     }
                 },
 
-                save: function() {
+                removeLayoutGroup: function (layoutGroup) {
+                    angular.forEach(this.groups, function (group) {
+                        var index = group.layoutGroups.indexOf(layoutGroup);
+                        if (index >= 0) {
+                            group.layoutGroups.splice(index, 1);
 
-                    var state = {
-                        dashboard: this._serializeGroups(),
-                        storageHash: this.storageHash
-                    };
+                            // check for active
+                            if (layoutGroup.active && group.layoutGroups.length) {
+                                var nextActive = index > 0 ? index - 1 : 0;
+                                group.layoutGroups[nextActive].active = true;
+                            }
+                        }
+                    })
+                },
+
+                save: function () {
+
+                    var state = this._serializeGroups();
+
+                    state.storageHash = this.storageHash;
 
                     if (this.stringifyStorage) {
                         state = JSON.stringify(state);
@@ -639,38 +731,6 @@ angular.module('ui.dashboard')
                     this.options.unsavedChangeCount = 0;
                 },
 
-                addLayoutGroups: function (groups) {
-                    if (!angular.isArray(groups)) {
-                        groups = [groups];
-                    }
-                    var self = this;
-                    angular.forEach(groups, function (group) {
-// groupTitle
-                        group.layouts = [];
-
-                        angular.forEach(group.layoutGroups, function (layoutGroup) {
-                            //layoutGroupTitle
-
-                            angular.forEach(layoutGroup.layoutCollections, function (layoutCollection) {
-                                // layoutCollectionTitle
-
-                                var layoutOptions = {
-                                    storage: layoutstore,
-                                    storageId: layoutCollection.storageId,
-                                    widgetDefinitions: self.widgetDefinitions,
-                                    stringifyStorage: false,
-                                    explicitSave: true,
-                                    defaultWidgets: [],
-                                    widgetButtons: true
-                                };
-
-                                var layout = new LayoutStorage(layoutOptions);
-
-                                group.layouts.push(layout);
-                            })
-                        });
-                    });
-                },
                 load: function () {
 
                     var serialized = this.storage.getItem(this.id);
@@ -725,20 +785,32 @@ angular.module('ui.dashboard')
 
                     angular.forEach(this.defaultGroupLayouts.groups, function (group) {
                         self.add(angular.extend(_.clone(defaults), group));
-                    })
+                    });
+
+                    self.layoutStates = angular.extend(self.layoutStates, self.defaultGroupLayouts.layoutStates);
                 },
 
-                _serializeGroups: function() {
+                _serializeGroups: function () {
                     var result = {
                         groups: []
                     };
-                    angular.forEach(this.groups, function(l) {
-                        result.groups.push({
-                            title: l.groupTitle,
+                    angular.forEach(this.groups, function (l) {
+                        var group = {
+                            groupTitle: l.groupTitle,
                             id: l.id,
-                            active: l.active,
-                            locked: l.locked
+                            locked: l.locked,
+                            layoutGroups: []
+                        };
+                        angular.forEach(l.layoutGroups, function (layoutGroup) {
+                            var layoutGroup = {
+                                layoutGroupTitle: layoutGroup.layoutGroupTitle,
+                                active: layoutGroup.active
+                            };
+
+                            group.layoutGroups.push(layoutGroup);
                         });
+
+                        result.groups.push(group);
                     });
                     return result;
                 },
@@ -766,16 +838,43 @@ angular.module('ui.dashboard')
                         this._addDefaultGroupLayouts();
                         return;
                     }
-                    this.states = deserialized.states;
+                    this.layoutStates = deserialized.layoutStates;
                     this.add(deserialized.groups);
                 },
 
-                _handleAsyncLoad: function(promise) {
+                _handleAsyncLoad: function (promise) {
                     var self = this;
                     promise.then(
                         angular.bind(self, this._handleSyncLoad),
                         angular.bind(self, this._addDefaultGroupLayouts)
                     );
+                },
+
+                _getGroupId: function (group) {
+                    if (group.id) {
+                        return group.id;
+                    }
+                    var max = 0;
+                    for (var i = 0; i < this.groups.length; i++) {
+                        var id = this.groups[i].id;
+                        max = Math.max(max, id * 1);
+                    }
+                    return max + 1;
+                },
+
+                _getLayoutGroupId: function (layoutGroup) {
+                    if (layoutGroup.id) {
+                        return layoutGroup.id;
+                    }
+                    var max = 0;
+                    for (var i = 0; i < this.groups.length; i++) {
+                        var group = this.groups[i];
+                        for (var j = 0; j < group.layoutGroups.length; j++) {
+                            var id = group.layoutGroups[j].id;
+                            max = Math.max(max, id * 1);
+                        }
+                    }
+                    return max + 1;
                 }
             };
 
@@ -1828,61 +1927,91 @@ angular.module("ui.dashboard").run(["$templateCache", function($templateCache) {
   );
 
   $templateCache.put("template/dashboard-grouped-layouts.html",
-    "<!--<ul ui-sortable=\"sortableOptions\" ng-model=\"layouts\" class=\"nav nav-tabs layout-tabs\">-->\r" +
+    "<tabset ui-sortable=\"sortableOptions\" ng-model=\"groups\">\r" +
     "\n" +
-    "<!--<li ng-repeat=\"layout in layouts\" ng-class=\"{ active: layout.active }\">-->\r" +
+    "    <tab ng-repeat-start=\"group in groups\" disabled=\"true\"\r" +
     "\n" +
-    "<!--<a ng-click=\"makeLayoutActive(layout)\">-->\r" +
-    "\n" +
-    "<!--<span ng-dblclick=\"editTitle(layout)\" ng-show=\"!layout.editingTitle\">{{layout.title}}</span>-->\r" +
-    "\n" +
-    "<!--<form action=\"\" class=\"layout-title\" ng-show=\"layout.editingTitle\" ng-submit=\"saveTitleEdit(layout)\">-->\r" +
-    "\n" +
-    "<!--<input type=\"text\" ng-model=\"layout.title\" class=\"form-control\" data-layout=\"{{layout.id}}\">-->\r" +
-    "\n" +
-    "<!--</form>-->\r" +
-    "\n" +
-    "<!--<span ng-if=\"!layout.locked\" ng-click=\"removeLayout(layout)\" class=\"glyphicon glyphicon-remove remove-layout-icon\"></span>-->\r" +
-    "\n" +
-    "<!--&lt;!&ndash; <span class=\"glyphicon glyphicon-pencil\"></span> &ndash;&gt;-->\r" +
-    "\n" +
-    "<!--&lt;!&ndash; <span class=\"glyphicon glyphicon-remove\"></span> &ndash;&gt;-->\r" +
-    "\n" +
-    "<!--</a>-->\r" +
-    "\n" +
-    "<!--</li>-->\r" +
-    "\n" +
-    "<!--<li>-->\r" +
-    "\n" +
-    "<!--<a ng-click=\"createNewLayout()\">-->\r" +
-    "\n" +
-    "<!--<span class=\"glyphicon glyphicon-plus\"></span>-->\r" +
-    "\n" +
-    "<!--</a>-->\r" +
-    "\n" +
-    "<!--</li>-->\r" +
-    "\n" +
-    "<!--</ul>-->\r" +
-    "\n" +
-    "<!--<div ng-repeat=\"layout in layouts | filter:isActive\" dashboard=\"layout.dashboard\" template-url=\"template/dashboard.html\"></div>-->\r" +
+    "         style=\"border-left: 1px solid #ddd; border-top: 1px solid #ddd; border-radius: 4px 4px 0 0\">\r" +
     "\n" +
     "\r" +
     "\n" +
-    "<ul ng-model=\"groups\" class=\"nav nav-tabs group-tabs\">\r" +
+    "        <tab-heading>\r" +
     "\n" +
-    "    <li ng-repeat=\"group in groups\">\r" +
+    "            <span ng-dblclick=\"editTitle(group)\" ng-show=\"!group.editingTitle\">{{group.groupTitle}}</span>\r" +
     "\n" +
-    "        <ul>\r" +
+    "\r" +
     "\n" +
-    "            <li>group.title</li>\r" +
+    "            <form action=\"\" class=\"group-title\" ng-show=\"group.editingTitle\" ng-submit=\"saveTitleEdit(group)\">\r" +
     "\n" +
-    "            <li ng-repeat=\"layoutGroup in group.layoutGroups\">layoutGroup.title</li>\r" +
+    "                <input type=\"text\" ng-model=\"group.groupTitle\" class=\"form-control\" data-layout=\"{{group.id}}\">\r" +
     "\n" +
-    "        </ul>\r" +
+    "            </form>\r" +
     "\n" +
-    "    </li>\r" +
+    "            <span ng-if=\"!group.locked\" ng-click=\"removeGroup(group)\" class=\"glyphicon glyphicon-remove remove-layout-icon\"></span>\r" +
     "\n" +
-    "</ul>"
+    "        </tab-heading>\r" +
+    "\n" +
+    "\r" +
+    "\n" +
+    "    </tab>\r" +
+    "\n" +
+    "    <tab ng-repeat=\"layoutGroup in group.layoutGroups\" style=\"border-top: 1px solid #ddd\">\r" +
+    "\n" +
+    "        <tab-heading>\r" +
+    "\n" +
+    "            <span ng-dblclick=\"editTitle(layoutGroup)\" ng-show=\"!layoutGroup.editingTitle\">{{layoutGroup.layoutGroupTitle}}</span>\r" +
+    "\n" +
+    "\r" +
+    "\n" +
+    "            <form action=\"\" class=\"layout-title\" ng-show=\"layoutGroup.editingTitle\"\r" +
+    "\n" +
+    "                  ng-submit=\"saveTitleEdit(layoutGroup)\">\r" +
+    "\n" +
+    "                <input type=\"text\" ng-model=\"layoutGroup.layoutGroupTitle\" class=\"form-control\"\r" +
+    "\n" +
+    "                       data-layout=\"{{group.id}}{{layoutGroup.layoutGroupTitle}}\">\r" +
+    "\n" +
+    "            </form>\r" +
+    "\n" +
+    "            <span ng-if=\"!layoutGroup.locked\" ng-click=\"removeLayoutGroup(layoutGroup)\" class=\"glyphicon glyphicon-remove remove-layout-icon\"></span>\r" +
+    "\n" +
+    "        </tab-heading>\r" +
+    "\n" +
+    "        {{layoutGroup}}\r" +
+    "\n" +
+    "        <div dashboard-layouts=\"layoutGroup.layoutOptions\"></div>\r" +
+    "\n" +
+    "    </tab>\r" +
+    "\n" +
+    "    <tab ng-repeat-end  style=\"border-top: 1px solid #ddd; border-right: 1px solid #ddd; margin-right: 3px; border-radius: 4px 4px 0 0\">\r" +
+    "\n" +
+    "        <tab-heading class=\"ui-sortable-handle\">\r" +
+    "\n" +
+    "            <a ng-click=\"createNewLayoutGroup(group)\">\r" +
+    "\n" +
+    "                <span class=\"glyphicon glyphicon-plus\"></span> Layout Group\r" +
+    "\n" +
+    "            </a>\r" +
+    "\n" +
+    "        </tab-heading>\r" +
+    "\n" +
+    "    </tab>\r" +
+    "\n" +
+    "    <tab>\r" +
+    "\n" +
+    "        <tab-heading class=\"ui-sortable-handle\">\r" +
+    "\n" +
+    "            <a ng-click=\"createNewGroup()\">\r" +
+    "\n" +
+    "                <span class=\"glyphicon glyphicon-plus\"></span> Group\r" +
+    "\n" +
+    "            </a>\r" +
+    "\n" +
+    "        </tab-heading>\r" +
+    "\n" +
+    "    </tab>\r" +
+    "\n" +
+    "</tabset>"
   );
 
   $templateCache.put("template/dashboard-layouts.html",

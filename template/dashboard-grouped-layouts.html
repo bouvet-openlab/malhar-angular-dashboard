@@ -1,28 +1,43 @@
-<!--<ul ui-sortable="sortableOptions" ng-model="layouts" class="nav nav-tabs layout-tabs">-->
-<!--<li ng-repeat="layout in layouts" ng-class="{ active: layout.active }">-->
-<!--<a ng-click="makeLayoutActive(layout)">-->
-<!--<span ng-dblclick="editTitle(layout)" ng-show="!layout.editingTitle">{{layout.title}}</span>-->
-<!--<form action="" class="layout-title" ng-show="layout.editingTitle" ng-submit="saveTitleEdit(layout)">-->
-<!--<input type="text" ng-model="layout.title" class="form-control" data-layout="{{layout.id}}">-->
-<!--</form>-->
-<!--<span ng-if="!layout.locked" ng-click="removeLayout(layout)" class="glyphicon glyphicon-remove remove-layout-icon"></span>-->
-<!--&lt;!&ndash; <span class="glyphicon glyphicon-pencil"></span> &ndash;&gt;-->
-<!--&lt;!&ndash; <span class="glyphicon glyphicon-remove"></span> &ndash;&gt;-->
-<!--</a>-->
-<!--</li>-->
-<!--<li>-->
-<!--<a ng-click="createNewLayout()">-->
-<!--<span class="glyphicon glyphicon-plus"></span>-->
-<!--</a>-->
-<!--</li>-->
-<!--</ul>-->
-<!--<div ng-repeat="layout in layouts | filter:isActive" dashboard="layout.dashboard" template-url="template/dashboard.html"></div>-->
+<tabset ui-sortable="sortableOptions" ng-model="groups">
+    <tab ng-repeat-start="group in groups" disabled="true"
+         style="border-left: 1px solid #ddd; border-top: 1px solid #ddd; border-radius: 4px 4px 0 0">
 
-<ul ng-model="groups" class="nav nav-tabs group-tabs">
-    <li ng-repeat="group in groups">
-        <ul>
-            <li>group.title</li>
-            <li ng-repeat="layoutGroup in group.layoutGroups">layoutGroup.title</li>
-        </ul>
-    </li>
-</ul>
+        <tab-heading>
+            <span ng-dblclick="editTitle(group)" ng-show="!group.editingTitle">{{group.groupTitle}}</span>
+
+            <form action="" class="group-title" ng-show="group.editingTitle" ng-submit="saveTitleEdit(group)">
+                <input type="text" ng-model="group.groupTitle" class="form-control" data-layout="{{group.id}}">
+            </form>
+            <span ng-if="!group.locked" ng-click="removeGroup(group)" class="glyphicon glyphicon-remove remove-layout-icon"></span>
+        </tab-heading>
+
+    </tab>
+    <tab ng-repeat="layoutGroup in group.layoutGroups" style="border-top: 1px solid #ddd">
+        <tab-heading>
+            <span ng-dblclick="editTitle(layoutGroup)" ng-show="!layoutGroup.editingTitle">{{layoutGroup.layoutGroupTitle}}</span>
+
+            <form action="" class="layout-title" ng-show="layoutGroup.editingTitle"
+                  ng-submit="saveTitleEdit(layoutGroup)">
+                <input type="text" ng-model="layoutGroup.layoutGroupTitle" class="form-control"
+                       data-layout="{{group.id}}{{layoutGroup.layoutGroupTitle}}">
+            </form>
+            <span ng-if="!layoutGroup.locked" ng-click="removeLayoutGroup(layoutGroup)" class="glyphicon glyphicon-remove remove-layout-icon"></span>
+        </tab-heading>
+        {{layoutGroup}}
+        <div dashboard-layouts="layoutGroup.layoutOptions"></div>
+    </tab>
+    <tab ng-repeat-end  style="border-top: 1px solid #ddd; border-right: 1px solid #ddd; margin-right: 3px; border-radius: 4px 4px 0 0">
+        <tab-heading class="ui-sortable-handle">
+            <a ng-click="createNewLayoutGroup(group)">
+                <span class="glyphicon glyphicon-plus"></span> Layout Group
+            </a>
+        </tab-heading>
+    </tab>
+    <tab>
+        <tab-heading class="ui-sortable-handle">
+            <a ng-click="createNewGroup()">
+                <span class="glyphicon glyphicon-plus"></span> Group
+            </a>
+        </tab-heading>
+    </tab>
+</tabset>
