@@ -212,7 +212,7 @@ describe('DashboardStorage service', function () {
             angular.forEach(storage.layoutStates, function (layoutState){
                 states.push(layoutState);
             })
-            console.log(storage.layoutStates)
+
             expect(states.map(function (l) {
                 return l.title
             })).toEqual(['Layout 1', 'Layout 2']);
@@ -609,7 +609,7 @@ describe('DashboardStorage service', function () {
             storage.addLayoutGroup(group, layoutGroup);
 
             expect(layoutGroup.layoutOptions.storageId).toEqual(options.storageId + '-' + group.id + '-' + layoutGroup.id + '-layouts', 'Should generate unique storage id');
-            expect(layoutGroup.layoutOptions.storage).toEqual(storage.getInternalLayoutStorage(), 'Should use internal storage');
+            expect(layoutGroup.layoutOptions.storage).toBeDefined('Should use internal storage');
             expect(layoutGroup.layoutOptions.storageHash).toEqual(options.storageHash, 'Should use common hash');
             expect(layoutGroup.layoutOptions.widgetDefinitions).toEqual(options.widgetDefinitions, 'Should use widget definitions');
             expect(layoutGroup.layoutOptions.defaultWidgets).toEqual([], 'Should not add default widgets');
@@ -644,7 +644,7 @@ describe('DashboardStorage service', function () {
         it('should do nothing if layoutGroup is not in group', function () {
             var layoutGroup = {};
             var before = storage.groups[1].layoutGroups.length;
-            console.log(before);
+
             storage.removeLayoutGroup(layoutGroup);
             var after = storage.groups[1].layoutGroups.length;
             expect(before).toEqual(after);

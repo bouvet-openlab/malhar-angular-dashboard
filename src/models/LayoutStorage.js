@@ -31,8 +31,6 @@ angular.module('ui.dashboard')
       }
     };
 
-    
-
     function LayoutStorage(options) {
 
       var defaults = {

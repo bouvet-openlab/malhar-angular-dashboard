@@ -18,6 +18,7 @@ angular.module('ui.dashboard')
                     var dashboardStorage = new DashboardStorage(scope.groupOptions);
 
                     scope.groups = dashboardStorage.groups;
+                    scope.layoutStates = dashboardStorage.layoutStates;
 
                     scope.editTitle = function (group) {
                         if (group.locked) {
@@ -52,7 +53,7 @@ angular.module('ui.dashboard')
                     };
 
                     scope.createNewLayoutGroup = function (group) {
-                        var layoutGroup = {layoutGroupTitle: 'Custom Layout Group', layoutCollections: []};
+                        var layoutGroup = {layoutGroupTitle: 'Custom Layout Group'};
                         dashboardStorage.addLayoutGroup(group, layoutGroup);
                         dashboardStorage.save();
 

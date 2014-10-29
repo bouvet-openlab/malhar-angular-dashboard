@@ -7,9 +7,8 @@
 angular.module('app').controller('GroupedLayoutsDemoCtrl',
     function ($scope, $interval, $window, widgetDefinitions, defaultWidgets) {
 
-        //localStorage.clear();
-        console.log(localStorage.getItem('demo-grouped-layouts'));
         $scope.groupOptions = {
+            widgetButtons: true,
             storageId: 'demo-grouped-layouts',
             storage: localStorage,
             storageHash: 'fs4df4d51',
