@@ -1,6 +1,6 @@
 /**
- * Created by EIBEL on 30.10.2014.
- */
+* Created by EIBEL on 30.10.2014.
+*/
 
 'use strict';
 
@@ -115,9 +115,6 @@ describe('Directive: grouped-layouts', function(){
     expect(childScope.options).toBe(options);
 
     expect(options.defaultGroupLayouts.groups.length).toBe(childScope.groups.length);
-    angular.forEach(options.defaultGroupLayouts.groups, function(group){
-      expect(childScope.groups.indexOf(group) >= 0).toBe(true, 'group should be same instance');
-    })
   });
 
   // TODO: Should set an active dashboard

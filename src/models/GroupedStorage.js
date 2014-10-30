@@ -52,29 +52,56 @@ angular.module('ui.dashboard')
       }
 
       GroupedStorage.prototype = {
-        load: function(){
-          this._addDefaultGroups();
-        },
+        load: function () {
+          var serialized = this.storage.getItem(this.id);
 
-        add: function(group){
-          if (group) {
-            var self = this;
+          this.clear();
 
-            var defaults = {
-              groupTitle: 'Custom Group',
-              layoutGroups: []
-            };
-
-            angular.extend(defaults, group);
-            angular.extend(group, defaults);
-
-            group.id = self._getGroupId(group);
-
-            self.groups.push(group);
+          if (serialized) {
+            // check for promise
+            if (angular.isObject(serialized) && angular.isFunction(serialized.then)) {
+              this._handleAsyncLoad(serialized);
+            } else {
+              this._handleSyncLoad(serialized);
+            }
+          }
+          else {
+            this._addDefaultGroups();
           }
         },
 
-        remove: function(group) {
+        add: function (groups) {
+          if (groups) {
+            if (!angular.isArray(groups)) {
+              groups = [groups];
+            }
+
+            var self = this;
+
+            angular.forEach(groups, function (group) {
+
+              var defaults = {
+                groupTitle: 'Custom Group',
+                layoutGroups: []
+              };
+
+              var layoutGroups = group.layoutGroups;
+
+              delete group.layoutGroups;
+
+              angular.extend(defaults, group);
+              angular.extend(group, defaults);
+
+              group.id = self._getGroupId(group);
+
+              self.groups.push(group);
+
+              self.addLayoutGroup(group, layoutGroups);
+            });
+          }
+        },
+
+        remove: function (group) {
           var index = this.groups.indexOf(group);
 
           if (index >= 0 && (angular.isUndefined(group.layoutGroups) || group.layoutGroups.length === 0)) {
@@ -82,29 +109,41 @@ angular.module('ui.dashboard')
           }
         },
 
-        addLayoutGroup: function(group, layoutGroup){
-          if (group && layoutGroup) {
+        addLayoutGroup: function (group, layoutGroups) {
+          if (group && layoutGroups) {
+            if (!angular.isArray(layoutGroups)) {
+              layoutGroups = [layoutGroups];
+            }
+
             var self = this;
 
             if (self.groups.indexOf(group) === -1) {
               return;
             }
 
-            var defaults = {
-              layoutGroupTitle: 'Custom Layout Group',
-              layouts: []
-            };
+            angular.forEach(layoutGroups, function (layoutGroup) {
+              var defaults = {
+                layoutGroupTitle: 'Custom Layout Group',
+                layouts: []
+              };
 
-            angular.extend(defaults, layoutGroup);
-            angular.extend(layoutGroup, defaults);
+              var layouts = layoutGroup.layouts;
 
-            layoutGroup.id = self._getLayoutGroupId(layoutGroup);
+              delete layoutGroup.layouts;
 
-            group.layoutGroups.push(layoutGroup);
+              angular.extend(defaults, layoutGroup);
+              angular.extend(layoutGroup, defaults);
+
+              layoutGroup.id = self._getLayoutGroupId(layoutGroup);
+
+              group.layoutGroups.push(layoutGroup);
+              self.addLayout(layoutGroup, layouts);
+            });
+
           }
         },
 
-        removeLayoutGroup: function(layoutGroup){
+        removeLayoutGroup: function (layoutGroup) {
           angular.forEach(this.groups, function (group) {
             var index = group.layoutGroups.indexOf(layoutGroup);
 
@@ -115,78 +154,95 @@ angular.module('ui.dashboard')
           });
         },
 
-        addLayout: function(layoutGroup, layouts){
-          if (!angular.isArray(layouts)) {
-            layouts = [layouts];
+        addLayout: function (layoutGroup, layouts) {
+          if (layouts) {
+            if (!angular.isArray(layouts)) {
+              layouts = [layouts];
+            }
+
+            var self = this;
+
+            angular.forEach(layouts, function (layout) {
+              layout.dashboard = layout.dashboard || {};
+              layout.dashboard.storage = self;
+              layout.dashboard.storageId = layout.id = self._getLayoutId(layout);
+              layout.dashboard.widgetDefinitions = self.widgetDefinitions;
+              layout.dashboard.stringifyStorage = false;
+              layout.dashboard.defaultWidgets = layout.defaultWidgets || self.defaultWidgets;
+              layout.dashboard.widgetButtons = self.widgetButtons;
+              layout.dashboard.explicitSave = self.explicitSave;
+              layoutGroup.layouts.push(layout);
+            });
           }
-
-          var self = this;
-
-          angular.forEach(layouts, function(layout){
-            layout.dashboard = layout.dashboard || {};
-            layout.dashboard.storage = self;
-            layout.dashboard.storageId = layout.id = self._getLayoutId(layout);
-            layout.dashboard.widgetDefinitions = self.widgetDefinitions;
-            layout.dashboard.stringifyStorage = false;
-            layout.dashboard.defaultWidgets = layout.defaultWidgets || self.defaultWidgets;
-            layout.dashboard.widgetButtons = self.widgetButtons;
-            layout.dashboard.explicitSave = self.explicitSave;
-            layoutGroup.layouts.push(layout);
-          });
         },
 
-        save: function(){
+        save: function () {
           var state = {
-            layouts: this._serializeGroups(),
+            groups: this._serializeGroups(),
             states: this.states,
             storageHash: this.storageHash
           };
 
-          if(this.stringifyStorage){
+          if (this.stringifyStorage) {
             state = JSON.stringify(state);
           }
 
           this.storage.setItem(this.id, state);
         },
 
-        setItem: function(id, value) {
+        clear: function () {
+          this.groups = [];
+          this.states = {};
+        },
+
+        setItem: function (id, value) {
           this.states[id] = value;
+
           this.save();
         },
 
-        getItem: function(id) {
+        getItem: function (id) {
           return this.states[id];
         },
 
-        removeItem: function(id) {
+        removeItem: function (id) {
           delete this.states[id];
           this.save();
         },
 
-        _addDefaultGroups: function(){
+        _addDefaultGroups: function () {
           var self = this;
 
-          angular.forEach(this.defaultGroupLayouts.groups, function(group){
-            self.add(group);
+          angular.forEach(this.defaultGroupLayouts.groups, function (group) {
+            self.add(_.clone(group));
           });
         },
 
-        _serializeGroups: function(){
+        _serializeGroups: function () {
           var result = [];
 
-          angular.forEach(this.groups, function(g){
+          angular.forEach(this.groups, function (g) {
             var group = {
+              id: g.id,
+              groupTitle: g.groupTitle,
               layoutGroups: []
             };
 
-            angular.forEach(g.layoutGroups, function(lg){
+            angular.forEach(g.layoutGroups, function (lg) {
               var layoutGroup = {
+                id: lg.id,
+                layoutGroupTitle: lg.layoutGroupTitle,
+                active: lg.active,
                 layouts: []
               };
 
-              angular.forEach(lg.layouts, function(l){
+              angular.forEach(lg.layouts, function (l) {
                 var layout = {
-
+                  id: l.id,
+                  title: l.title,
+                  active: l.active,
+                  locked: l.locked,
+                  defaultWidgets: l.dashboard.defaultWidgets
                 };
                 layoutGroup.layouts.push(layout);
               });
@@ -200,27 +256,64 @@ angular.module('ui.dashboard')
           return result;
         },
 
+        _handleSyncLoad: function (serialized) {
+          var self = this;
+
+          var deserialized;
+
+          if (this.stringifyStorage) {
+            try {
+
+              deserialized = JSON.parse(serialized);
+
+            } catch (e) {
+              this._addDefaultGroups();
+              return;
+            }
+          } else {
+
+            deserialized = serialized;
+
+          }
+
+          if (this.storageHash !== deserialized.storageHash) {
+            this._addDefaultGroups();
+            return;
+          }
+
+          this.states = deserialized.states;
+          self.add(deserialized.groups);
+        },
+
+        _handleAsyncLoad: function(promise) {
+          var self = this;
+          promise.then(
+            angular.bind(self, this._handleSyncLoad),
+            angular.bind(self, this._addDefaultGroups)
+          );
+        },
+
         _getGroupId: function (group) {
           if (group.id) {
             return group.id;
           }
 
           var max = 0;
-          angular.forEach(this.groups, function(g){
+          angular.forEach(this.groups, function (g) {
             max = Math.max(max, g.id * 1);
           });
 
           return max + 1;
         },
 
-        _getLayoutGroupId: function(layoutGroup){
+        _getLayoutGroupId: function (layoutGroup) {
           if (layoutGroup.id) {
             return layoutGroup.id;
           }
 
           var max = 0;
-          angular.forEach(this.groups, function(g){
-            angular.forEach(g.layoutGroups, function(lg){
+          angular.forEach(this.groups, function (g) {
+            angular.forEach(g.layoutGroups, function (lg) {
               max = Math.max(max, lg.id * 1);
             });
           });
@@ -228,17 +321,17 @@ angular.module('ui.dashboard')
           return max + 1;
         },
 
-        _getLayoutId: function(layout){
-          if (layout.id){
+        _getLayoutId: function (layout) {
+          if (layout.id) {
             return layout.id;
           }
 
           var max = 0;
-          angular.forEach(this.groups, function(g){
-            angular.forEach(g.layoutGroups, function(lg){
-              angular.forEach(lg.layouts, function(l){
+          angular.forEach(this.groups, function (g) {
+            angular.forEach(g.layoutGroups, function (lg) {
+              angular.forEach(lg.layouts, function (l) {
                 max = Math.max(max, l.id * 1);
-              })
+              });
             });
           });
 
