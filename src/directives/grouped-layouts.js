@@ -62,6 +62,15 @@ angular.module('ui.dashboard')
             groupedStorage.removeLayoutGroup(layoutGroup);
             groupedStorage.save();
           };
+
+          scope.createLayout = function(layoutGroup){
+            var layout = {title: 'Custom'};
+
+            groupedStorage.addLayout(layoutGroup, layout);
+            groupedStorage.save();
+
+            return layout;
+          };
         }
       };
     }

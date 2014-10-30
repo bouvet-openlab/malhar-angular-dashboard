@@ -280,6 +280,37 @@ describe('Directive: grouped-layouts', function(){
   });
 
   describe('the createLayout method', function(){
+    it('should call the add and save methods of LayoutStorage', function() {
+      spyOn(GroupedStorage.prototype, 'addLayout');
+      spyOn(GroupedStorage.prototype, 'save');
 
+      var layoutGroup = childScope.groups[0].layoutGroups[0];
+
+      childScope.createLayout(layoutGroup);
+      expect(GroupedStorage.prototype.addLayout).toHaveBeenCalled();
+      expect(GroupedStorage.prototype.save).toHaveBeenCalled();
+    });
+
+    it('layoutGroup.layouts should be larger after create', function(){
+      var layoutGroup = childScope.groups[0].layoutGroups[0];
+
+      var beforeLength = layoutGroup.layouts.length;
+
+      var result = childScope.createLayout(layoutGroup);
+
+      expect(layoutGroup.layouts.indexOf(result)).toBe(beforeLength);
+
+      expect(layoutGroup.layouts.length).toBe(beforeLength + 1);
+    });
+
+    it('should return the newly created layout object', function() {
+      var layoutGroup = childScope.groups[0].layoutGroups[0];
+
+      var result = childScope.createLayout(layoutGroup);
+      expect(typeof result).toEqual('object');
+
+      expect(layoutGroup.layouts.indexOf(result) >= 0).toBe(true);
+      expect(result.id > 0).toBe(true);
+    });
   });
 });

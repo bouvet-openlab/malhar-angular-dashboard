@@ -42,7 +42,12 @@ describe('GroupedStorage service', function () {
               {
                 id: 1,
                 layoutGroupTitle: 'Default Layout group 1',
-                layouts: []
+                layouts: [
+                  {
+                    id: 1,
+                    title: 'Default Layout 1'
+                  }
+                ]
               },
               {
                 id: 2,
@@ -69,7 +74,15 @@ describe('GroupedStorage service', function () {
           }
         ]
       },
-      storageId: 'uniqueStorageId1'
+      defaultLayouts: [],
+      storageId: 'uniqueStorageId1',
+      storageHash: 'ds5f9d1f',
+      stringifyStorage: true,
+      widgetDefinitions: [
+
+      ],
+      widgetButtons: false,
+      explicitSave: false
     };
   });
 
@@ -97,21 +110,52 @@ describe('GroupedStorage service', function () {
       });
     });
 
-    it('should create a groups array', function () {
+    it('should set storageHash to empty string if not provided', function(){
+      delete options.storageHash;
+      var newStorage = new GroupedStorage(options);
+
+      expect(newStorage.storageHash).toBe('');
+    });
+
+    it('should set stringifyStorage to true if not provided', function(){
+      delete options.stringifyStorage;
+      var newStorage = new GroupedStorage(options);
+
+      expect(newStorage.stringifyStorage).toBe(true);
+    });
+
+    it('should create a groups array and states object', function () {
       expect(storage.groups instanceof Array).toEqual(true, 'groups should be array');
+      expect(typeof storage.states).toEqual('object', 'states should be object');
     });
 
     it('should set a subset of the options directly on the GroupStorage instance itself', function () {
       var properties = {
         storage: 'storage',
         defaultLayoutGroups: 'defaultLayoutGroups',
-        id: 'storageId'
+        id: 'storageId',
+        defaultWidgets: 'defaultWidgets',
+        storageHash: 'storageHash',
+        stringifyStorage: 'stringifyStorage',
+        widgetDefinitions: 'widgetDefinitions',
+        defaultLayouts: 'defaultLayouts',
+        widgetButtons: 'widgetButtons',
+        explicitSave: 'explicitSave',
+        settingsModalOptions: {optionProp: 'something'},
+        onSettingsClose: function() {
+
+        },
+        onSettingsDismiss: function() {
+
+        }
       };
 
       angular.forEach(properties, function (val, key) {
         expect(storage[key]).toEqual(options[val], 'option: ' + val);
       });
 
+      expect(storage.options).toBe(options);
+      expect(storage.options.unsavedChangeCount).toBe(0)
     });
 
     it('should call load', function () {
@@ -385,6 +429,92 @@ describe('GroupedStorage service', function () {
     });
   });
 
+  describe('the addLayout method', function(){
+    beforeEach(function(){
+      storage = new GroupedStorage(options);
+    });
+
+    it('should add to layoutGroup.layouts', function(){
+      options.defaultGroupLayouts.groups[0].layoutGroups[0].layouts = [];
+      storage = new GroupedStorage(options);
+
+      var layoutGroup = storage.groups[0].layoutGroups[0];
+      var newLayout = { title: 'another layout' };
+      storage.addLayout(layoutGroup, newLayout);
+      expect(storage.groups[0].layoutGroups[0].layouts[0]).toBe(newLayout);
+    });
+
+    it('should be able to take an array of new layouts', function() {
+      var newLayouts = [ { title: 'my-layout' }, { title: 'my-layout-2' } ];
+      var layoutGroup = storage.groups[0].layoutGroups[0];
+      layoutGroup.layouts = [];
+
+      storage.addLayout(layoutGroup, newLayouts);
+      expect(layoutGroup.layouts.length).toEqual(2);
+      expect(layoutGroup.layouts.indexOf(newLayouts[0])).not.toEqual(-1);
+      expect(layoutGroup.layouts.indexOf(newLayouts[1])).not.toEqual(-1);
+    });
+
+    it('should look for defaultWidgets on storage options if not supplied on layout definition', function() {
+      options.defaultWidgets = [{name: 'a'}, {name: 'b'}, {name: 'c'}];
+      storage = new GroupedStorage(options);
+
+      var layoutGroup = storage.groups[0].layoutGroups[0];
+
+      var newLayouts = [ { title: 'my-layout', defaultWidgets: [] }, { title: 'my-layout-2' } ];
+      storage.addLayout(layoutGroup, newLayouts);
+      expect(newLayouts[0].dashboard.defaultWidgets === newLayouts[0].defaultWidgets).toEqual(true, 'should keep existing defaultWidgets');
+      expect(newLayouts[1].dashboard.defaultWidgets === options.defaultWidgets).toEqual(true, 'should use default widgets from options if not on layout');
+    });
+
+    it('should use defaultWidgets if supplied in the layout definition', function() {
+      options.defaultWidgets = [{name: 'a'}, {name: 'b'}, {name: 'c'}];
+      storage = new GroupedStorage(options);
+
+      var layoutGroup = storage.groups[0].layoutGroups[0];
+
+      var newLayouts = [ { title: 'my-layout', defaultWidgets: [] }, { title: 'my-layout-2' } ];
+      storage.addLayout(layoutGroup, newLayouts);
+      expect(newLayouts[0].dashboard.defaultWidgets).toEqual([]);
+      expect(newLayouts[1].dashboard.defaultWidgets).toEqual(options.defaultWidgets);
+    });
+
+    it('should set dashboard options layout', function(){
+      options.defaultGroupLayouts.groups[0].layoutGroups[0].layouts = [];
+      storage = new GroupedStorage(options);
+
+      var layoutGroup = storage.groups[0].layoutGroups[0];
+      var newLayout = { title: 'another layout' };
+      storage.addLayout(layoutGroup, newLayout);
+      expect(storage.groups[0].layoutGroups[0].layouts[0]).toBe(newLayout);
+
+      expect(newLayout.dashboard.storage).toBe(storage);
+      expect(newLayout.dashboard.widgetDefinitions).toBe(options.widgetDefinitions);
+      expect(newLayout.dashboard.stringifyStorage).toBe(false);
+      expect(newLayout.dashboard.widgetButtons).toBe(options.widgetButtons);
+      expect(newLayout.dashboard.explicitSave).toBe(options.explicitSave);
+      expect(newLayout.dashboard.settingsModalOptions).toBe(options.settingsModalOptions);
+      expect(newLayout.dashboard.onSettingsClose).toBe(options.onSettingsClose);
+      expect(newLayout.dashboard.onSettingsDismiss).toBe(options.onSettingsDismiss);
+    });
+
+    it('should call _getLayoutId to generate next id', function () {
+      var layoutGroup = storage.groups[0].layoutGroups[0];
+      var layout = { title: 'another layout' };
+
+      var beforeLength = layoutGroup.layouts.length;
+
+      expect(beforeLength > 0).toBe(true);
+
+      storage.addLayout(layoutGroup, layout);
+
+      var newLayout = layoutGroup.layouts[beforeLength];
+
+      expect(newLayout.id > beforeLength).toBe(true, 'id should be a number higher than previous number of items in collection');
+      expect(newLayout.id).toBe(newLayout.dashboard.storageId);
+    });
+  });
+
   describe('the save method', function(){
 
     it('should call options.storage.setItem with a stringified object', function () {
@@ -398,5 +528,51 @@ describe('GroupedStorage service', function () {
         JSON.parse(options.storage.setItem.calls.argsFor(0)[1]);
       }).not.toThrow();
     });
+  });
+
+  describe('the setItem method', function() {
+
+    it('should set storage.states[id] to the second argument', function() {
+      var state = { some: 'thing'};
+      storage.setItem('id', state);
+      expect(storage.states.id).toEqual(state);
+    });
+
+    it('should call save', function() {
+      spyOn(storage, 'save');
+      var state = { some: 'thing'};
+      storage.setItem('id', state);
+      expect(storage.save).toHaveBeenCalled();
+    });
+
+  });
+
+  describe('the getItem method', function() {
+
+    it('should return states[id]', function() {
+      storage.states['myId'] = {};
+      var result = storage.getItem('myId');
+      expect(result === storage.states['myId']).toEqual(true);
+    });
+
+  });
+
+  describe('the removeItem', function() {
+
+    it('should remove states[id]', function() {
+      var state = {};
+      storage.setItem('1', state);
+      storage.removeItem('1');
+      expect(storage.states['1']).toBeUndefined();
+    });
+
+    it('should call save', function() {
+      spyOn(storage, 'save');
+      var state = {};
+      storage.setItem('1', state);
+      storage.removeItem('1');
+      expect(storage.save).toHaveBeenCalled();
+    });
+
   });
 });
