@@ -1,7 +1,5 @@
 angular-dashboard
 ====================
-[![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/DataTorrent/malhar-angular-dashboard?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
-
 [![Build Status](https://travis-ci.org/bouvet-openlab/malhar-angular-dashboard.svg?branch=master)](https://travis-ci.org/bouvet-openlab/malhar-angular-dashboard)
 
 Generic AngularJS component/directive providing dashboard/widgets functionality.

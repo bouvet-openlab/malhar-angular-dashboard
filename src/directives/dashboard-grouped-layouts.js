@@ -13,9 +13,9 @@ angular.module('ui.dashboard')
           return attr.templateUrl ? attr.templateUrl : 'template/dashboard-grouped-layouts.html';
         },
         link: function (scope, element, attrs) {
-          scope.options = scope.$eval(attrs.dashboardLayouts);
+          scope.options = scope.$eval(attrs.dashboardGroupedLayouts);
 
-          var dashboardStorage = new DashboardStorage(scope.groupOptions);
+          var dashboardStorage = new DashboardStorage(scope.options);
 
           scope.groups = dashboardStorage.groups;
           scope.layoutStates = dashboardStorage.layoutStates;

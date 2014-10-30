@@ -313,9 +313,9 @@ angular.module('ui.dashboard')
           return attr.templateUrl ? attr.templateUrl : 'template/dashboard-grouped-layouts.html';
         },
         link: function (scope, element, attrs) {
-          scope.options = scope.$eval(attrs.dashboardLayouts);
+          scope.options = scope.$eval(attrs.dashboardGroupedLayouts);
 
-          var dashboardStorage = new DashboardStorage(scope.groupOptions);
+          var dashboardStorage = new DashboardStorage(scope.options);
 
           scope.groups = dashboardStorage.groups;
           scope.layoutStates = dashboardStorage.layoutStates;
@@ -512,6 +512,74 @@ angular.module('ui.dashboard')
             },
           };
           scope.sortableOptions = angular.extend({}, sortableDefaults, scope.options.sortableOptions || {});
+        }
+      };
+    }
+  ]);
+/**
+ * Created by EIBEL on 30.10.2014.
+ */
+
+'use strict';
+
+angular.module('ui.dashboard')
+  .directive('groupedLayouts', [
+    'GroupedStorage', '$timeout', function(GroupedStorage, $timeout){
+      return {
+        scope: true,
+        templateUrl: function (element, attr) {
+          return attr.templateUrl ? attr.templateUrl : 'template/grouped-layouts.html';
+        },
+        link: function (scope, element, attrs) {
+          scope.options = scope.$eval(attrs.groupedLayouts);
+
+          var groupedStorage = new GroupedStorage(scope.options);
+
+          scope.groups = groupedStorage.groups;
+
+          scope.editTitle = function(objectToEdit, selector){
+            objectToEdit.editingTitle = true;
+
+            var input = element.find('input[name="' + selector + '"]');
+
+            $timeout(function(){
+              input.focus()[0].setSelectionRange(0, 9999);
+            });
+          };
+
+          scope.saveTitleEdit = function(objectEdited){
+            objectEdited.editingTitle = false;
+
+            groupedStorage.save();
+          };
+
+          scope.createGroup = function(){
+            var group = {groupTitle: 'Custom group'};
+
+            groupedStorage.add(group);
+            groupedStorage.save();
+
+            return group;
+          };
+
+          scope.removeGroup = function(group){
+            groupedStorage.remove(group);
+            groupedStorage.save();
+          };
+
+          scope.createLayoutGroup = function(group){
+            var layoutGroup = {layoutGroupTitle: 'Custom layout group'};
+
+            groupedStorage.addLayoutGroup(group, layoutGroup);
+            groupedStorage.save();
+
+            return layoutGroup;
+          };
+
+          scope.removeLayoutGroup = function(layoutGroup){
+            groupedStorage.removeLayoutGroup(layoutGroup);
+            groupedStorage.save();
+          };
         }
       };
     }
@@ -910,6 +978,154 @@ angular.module('ui.dashboard')
       };
 
       return DashboardStorage;
+    }
+  ]);
+/**
+ * Created by EIBEL on 30.10.2014.
+ */
+'use strict';
+
+
+angular.module('ui.dashboard')
+  .factory('GroupedStorage', [
+    function () {
+      var noopStorage = {
+        setItem: function () {
+
+        },
+        getItem: function () {
+
+        },
+        removeItem: function () {
+
+        }
+      };
+
+      function GroupedStorage(options) {
+        var defaults = {
+          storage: noopStorage
+        };
+
+        angular.extend(defaults, options);
+        angular.extend(options, defaults);
+
+        this.storage = options.storage;
+        this.id = options.storageId;
+        this.defaultGroupLayouts = options.defaultGroupLayouts;
+
+        this.groups = [];
+
+        this.load();
+      }
+
+      GroupedStorage.prototype = {
+        load: function(){
+          this._addDefaultGroups();
+        },
+
+        add: function(group){
+          if (group) {
+            var self = this;
+
+            var defaults = {
+              groupTitle: 'Custom Group',
+              layoutGroups: []
+            };
+
+            angular.extend(defaults, group);
+            angular.extend(group, defaults);
+
+            group.id = self._getGroupId(group);
+
+            self.groups.push(group);
+          }
+        },
+
+        remove: function(group) {
+          var index = this.groups.indexOf(group);
+
+          if (index >= 0 && (angular.isUndefined(group.layoutGroups) || group.layoutGroups.length === 0)) {
+            this.groups.splice(index, 1);
+          }
+        },
+
+        addLayoutGroup: function(group, layoutGroup){
+          if (group && layoutGroup) {
+            var self = this;
+
+            if (self.groups.indexOf(group) === -1) {
+              return;
+            }
+
+            var defaults = {
+              layoutGroupTitle: 'Custom Layout Group',
+              layouts: []
+            };
+
+            angular.extend(defaults, layoutGroup);
+            angular.extend(layoutGroup, defaults);
+
+            layoutGroup.id = self._getLayoutGroupId(layoutGroup);
+
+            group.layoutGroups.push(layoutGroup);
+          }
+        },
+
+        removeLayoutGroup: function(layoutGroup){
+          angular.forEach(this.groups, function (group) {
+            var index = group.layoutGroups.indexOf(layoutGroup);
+
+            if (index >= 0 && (angular.isUndefined(layoutGroup.layouts) || layoutGroup.layouts.length === 0)) {
+              group.layoutGroups.splice(index, 1);
+              return;
+            }
+          });
+        },
+
+        save: function(){
+          var state = JSON.stringify( this.groups);
+
+          this.storage.setItem(this.id, state);
+        },
+
+        _addDefaultGroups: function(){
+          var self = this;
+
+          angular.forEach(this.defaultGroupLayouts.groups, function(group){
+            self.add(group);
+          });
+        },
+
+        _getGroupId: function (group) {
+          if (group.id) {
+            return group.id;
+          }
+
+          var max = 0;
+          angular.forEach(this.groups, function(g){
+            max = Math.max(max, g.id * 1);
+          });
+
+          return max + 1;
+        },
+
+        _getLayoutGroupId: function(layoutGroup){
+          if (layoutGroup.id) {
+            return layoutGroup.id;
+          }
+
+          var max = 0;
+          angular.forEach(this.groups, function(g){
+            angular.forEach(g.layoutGroups, function(lg){
+              max = Math.max(max, lg.id * 1);
+            });
+          });
+
+          return max + 1;
+        }
+      };
+
+      return GroupedStorage;
     }
   ]);
 /*
@@ -2197,6 +2413,132 @@ angular.module("ui.dashboard").run(["$templateCache", function($templateCache) {
     "    </div>\r" +
     "\n" +
     "</div>"
+  );
+
+  $templateCache.put("template/grouped-layouts.html",
+    "<tabset ui-sortable=\"sortableOptions\" ng-model=\"groups\">\r" +
+    "\n" +
+    "    <tab ng-repeat-start=\"group in groups\" disabled=\"true\"\r" +
+    "\n" +
+    "         style=\"border-left: 1px solid #ddd; border-top: 1px solid #ddd; border-radius: 4px 4px 0 0\">\r" +
+    "\n" +
+    "\r" +
+    "\n" +
+    "        <tab-heading>\r" +
+    "\n" +
+    "            <span ng-dblclick=\"editTitle(group, 'group' + group.id)\" ng-show=\"!group.editingTitle\">{{group.groupTitle}}</span>\r" +
+    "\n" +
+    "\r" +
+    "\n" +
+    "            <form action=\"\" class=\"group-title\" ng-show=\"group.editingTitle\" ng-submit=\"saveTitleEdit(group)\">\r" +
+    "\n" +
+    "                <input type=\"text\" ng-model=\"group.groupTitle\" class=\"form-control\" name=\"group{{group.id}}\" data-layout=\"{{group.id}}\">\r" +
+    "\n" +
+    "            </form>\r" +
+    "\n" +
+    "            <span ng-if=\"!group.locked\" ng-click=\"removeGroup(group)\" class=\"glyphicon glyphicon-remove remove-layout-icon\"></span>\r" +
+    "\n" +
+    "        </tab-heading>\r" +
+    "\n" +
+    "\r" +
+    "\n" +
+    "    </tab>\r" +
+    "\n" +
+    "    <tab ng-repeat=\"layoutGroup in group.layoutGroups\" style=\"border-top: 1px solid #ddd\">\r" +
+    "\n" +
+    "        <tab-heading>\r" +
+    "\n" +
+    "            <span ng-dblclick=\"editTitle(layoutGroup, 'layoutGroup' + layoutGroup.id)\" ng-show=\"!layoutGroup.editingTitle\">{{layoutGroup.layoutGroupTitle}}</span>\r" +
+    "\n" +
+    "\r" +
+    "\n" +
+    "            <form action=\"\" class=\"layout-title\" ng-show=\"layoutGroup.editingTitle\"\r" +
+    "\n" +
+    "                  ng-submit=\"saveTitleEdit(layoutGroup)\">\r" +
+    "\n" +
+    "                <input type=\"text\" ng-model=\"layoutGroup.layoutGroupTitle\" class=\"form-control\" name=\"layoutGroup{{layoutGroup.id}}\"\r" +
+    "\n" +
+    "                       data-layout=\"{{group.id}}{{layoutGroup.layoutGroupTitle}}\">\r" +
+    "\n" +
+    "            </form>\r" +
+    "\n" +
+    "            <span ng-if=\"!layoutGroup.locked\" ng-click=\"removeLayoutGroup(layoutGroup)\" class=\"glyphicon glyphicon-remove remove-layout-icon\"></span>\r" +
+    "\n" +
+    "        </tab-heading>\r" +
+    "\n" +
+    "\r" +
+    "\n" +
+    "        <tabset>\r" +
+    "\n" +
+    "            <tab ng-repeat=\"layout in layoutGroup.layouts\">\r" +
+    "\n" +
+    "                <tab-heading>\r" +
+    "\n" +
+    "                    <span ng-dblclick=\"editTitle(layout, 'layout' + layout.id)\" ng-show=\"!layout.editingTitle\">{{layout.title}}</span>\r" +
+    "\n" +
+    "\r" +
+    "\n" +
+    "                    <form action=\"\" class=\"layout-title\" ng-show=\"layout.editingTitle\" ng-submit=\"saveTitleEdit(layout)\">\r" +
+    "\n" +
+    "                        <input type=\"text\" ng-model=\"layout.title\" class=\"form-control\" name=\"layout{{layout.id}}\"\r" +
+    "\n" +
+    "                               data-layout=\"{{group.id}}{{layoutGroup.id}}{{layout.layout}}\">\r" +
+    "\n" +
+    "                    </form>\r" +
+    "\n" +
+    "                    <span ng-if=\"!layout.locked\" ng-click=\"removeLayout(layout)\" class=\"glyphicon glyphicon-remove remove-layout-icon\"></span>\r" +
+    "\n" +
+    "                </tab-heading>\r" +
+    "\n" +
+    "            </tab>\r" +
+    "\n" +
+    "            <tab>\r" +
+    "\n" +
+    "                <tab-heading class=\"ui-sortable-handle\">\r" +
+    "\n" +
+    "                    <a ng-click=\"createLayout(layoutGroup)\">\r" +
+    "\n" +
+    "                        <span class=\"glyphicon glyphicon-plus\"></span> Layout\r" +
+    "\n" +
+    "                    </a>\r" +
+    "\n" +
+    "                </tab-heading>\r" +
+    "\n" +
+    "            </tab>\r" +
+    "\n" +
+    "        </tabset>\r" +
+    "\n" +
+    "    </tab>\r" +
+    "\n" +
+    "    <tab ng-repeat-end  style=\"border-top: 1px solid #ddd; border-right: 1px solid #ddd; margin-right: 3px; border-radius: 4px 4px 0 0\">\r" +
+    "\n" +
+    "        <tab-heading class=\"ui-sortable-handle\">\r" +
+    "\n" +
+    "            <a ng-click=\"createLayoutGroup(group)\">\r" +
+    "\n" +
+    "                <span class=\"glyphicon glyphicon-plus\"></span> Layout Group\r" +
+    "\n" +
+    "            </a>\r" +
+    "\n" +
+    "        </tab-heading>\r" +
+    "\n" +
+    "    </tab>\r" +
+    "\n" +
+    "    <tab>\r" +
+    "\n" +
+    "        <tab-heading class=\"ui-sortable-handle\">\r" +
+    "\n" +
+    "            <a ng-click=\"createGroup()\">\r" +
+    "\n" +
+    "                <span class=\"glyphicon glyphicon-plus\"></span> Group\r" +
+    "\n" +
+    "            </a>\r" +
+    "\n" +
+    "        </tab-heading>\r" +
+    "\n" +
+    "    </tab>\r" +
+    "\n" +
+    "</tabset>"
   );
 
   $templateCache.put("template/save-changes-modal.html",

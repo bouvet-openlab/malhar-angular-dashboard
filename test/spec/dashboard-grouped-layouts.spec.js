@@ -61,7 +61,7 @@ describe('Directive: dashboard-grouped-layouts', function () {
             }
         ];
         var defaultWidgets = _.clone(widgetDefinitions);
-        $rootScope.groupOptions = options = {
+        $rootScope.dashboardOptions = options = {
             widgetButtons: true,
             widgetDefinitions: widgetDefinitions,
             defaultGroupLayouts: {
@@ -129,7 +129,7 @@ describe('Directive: dashboard-grouped-layouts', function () {
     });
 
     it('should not require storage', inject(function ($compile) {
-        delete $rootScope.groupOptions.storage;
+        delete $rootScope.dashboardOptions.storage;
         expect(function () {
             var noStorageEl = $compile('<div dashboard-grouped-layouts="dashboardOptions"></div>')($rootScope);
             $rootScope.$digest();
@@ -153,7 +153,7 @@ describe('Directive: dashboard-grouped-layouts', function () {
                 '</li>' +
                 '</ul>'
         );
-        var customElement = $compile('<div dashboard-grouped-layouts="groupOptions" template-url="myCustomGroupTemplate.html"></div>')($rootScope);
+        var customElement = $compile('<div dashboard-grouped-layouts="dashboardOptions" template-url="myCustomGroupTemplate.html"></div>')($rootScope);
         $rootScope.$digest();
         expect(customElement.find('ul.my-custom-tabs').length).toEqual(1);
 
@@ -165,7 +165,7 @@ describe('Directive: dashboard-grouped-layouts', function () {
                 layoutGroup.active = false;
             });
         });
-        element = $compile('<div dashboard-grouped-layouts="groupOptions"></div>')($rootScope);
+        element = $compile('<div dashboard-grouped-layouts="dashboardOptions"></div>')($rootScope);
         $rootScope.$digest();
         childScope = element.scope();
 
