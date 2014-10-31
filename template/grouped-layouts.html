@@ -3,37 +3,47 @@
          style="border-left: 1px solid #ddd; border-top: 1px solid #ddd; border-radius: 4px 4px 0 0">
 
         <tab-heading>
-            <span ng-dblclick="editTitle(group, 'group' + group.id)" ng-show="!group.editingTitle">{{group.groupTitle}}</span>
+            <span ng-dblclick="editTitle(group, 'group' + group.id)"
+                  ng-show="!group.editingTitle">{{group.groupTitle}}</span>
 
             <form action="" class="group-title" ng-show="group.editingTitle" ng-submit="saveTitleEdit(group)">
-                <input type="text" ng-model="group.groupTitle" class="form-control" name="group{{group.id}}" data-layout="{{group.id}}">
+                <input type="text" ng-model="group.groupTitle" class="form-control" name="group{{group.id}}"
+                       data-layout="{{group.id}}">
             </form>
-            <span ng-if="!group.locked" ng-click="removeGroup(group)" class="glyphicon glyphicon-remove remove-layout-icon"></span>
+            <span ng-if="!group.locked" ng-click="removeGroup(group)"
+                  class="glyphicon glyphicon-remove remove-layout-icon"></span>
         </tab-heading>
 
     </tab>
     <tab ng-repeat="layoutGroup in group.layoutGroups" style="border-top: 1px solid #ddd">
         <tab-heading>
-            <span ng-dblclick="editTitle(layoutGroup, 'layoutGroup' + layoutGroup.id)" ng-show="!layoutGroup.editingTitle">{{layoutGroup.layoutGroupTitle}}</span>
+            <span ng-dblclick="editTitle(layoutGroup, 'layoutGroup' + layoutGroup.id)"
+                  ng-show="!layoutGroup.editingTitle">{{layoutGroup.layoutGroupTitle}}</span>
 
             <form action="" class="layout-title" ng-show="layoutGroup.editingTitle"
                   ng-submit="saveTitleEdit(layoutGroup)">
-                <input type="text" ng-model="layoutGroup.layoutGroupTitle" class="form-control" name="layoutGroup{{layoutGroup.id}}"
+                <input type="text" ng-model="layoutGroup.layoutGroupTitle" class="form-control"
+                       name="layoutGroup{{layoutGroup.id}}"
                        data-layout="{{group.id}}{{layoutGroup.layoutGroupTitle}}">
             </form>
-            <span ng-if="!layoutGroup.locked" ng-click="removeLayoutGroup(layoutGroup)" class="glyphicon glyphicon-remove remove-layout-icon"></span>
+            <span ng-if="!layoutGroup.locked" ng-click="removeLayoutGroup(layoutGroup)"
+                  class="glyphicon glyphicon-remove remove-layout-icon"></span>
         </tab-heading>
 
         <tabset>
             <tab ng-repeat="layout in layoutGroup.layouts">
                 <tab-heading>
-                    <span ng-dblclick="editTitle(layout, 'layout' + layout.id)" ng-show="!layout.editingTitle">{{layout.title}}</span>
+                    <a ng-click="makeLayoutActive(layout)">
+                        <span ng-dblclick="editTitle(layout, 'layout' + layout.id)" ng-show="!layout.editingTitle">{{layout.title}}</span>
 
-                    <form action="" class="layout-title" ng-show="layout.editingTitle" ng-submit="saveTitleEdit(layout)">
-                        <input type="text" ng-model="layout.title" class="form-control" name="layout{{layout.id}}"
-                               data-layout="{{group.id}}{{layoutGroup.id}}{{layout.layout}}">
-                    </form>
-                    <span ng-if="!layout.locked" ng-click="removeLayout(layout)" class="glyphicon glyphicon-remove remove-layout-icon"></span>
+                        <form action="" class="layout-title" ng-show="layout.editingTitle"
+                              ng-submit="saveTitleEdit(layout)">
+                            <input type="text" ng-model="layout.title" class="form-control" name="layout{{layout.id}}"
+                                   data-layout="{{group.id}}{{layoutGroup.id}}{{layout.layout}}">
+                        </form>
+                        <span ng-if="!layout.locked" ng-click="removeLayout(layout)"
+                              class="glyphicon glyphicon-remove remove-layout-icon"></span>
+                    </a>
                 </tab-heading>
             </tab>
             <tab>
@@ -45,7 +55,8 @@
             </tab>
         </tabset>
     </tab>
-    <tab ng-repeat-end  style="border-top: 1px solid #ddd; border-right: 1px solid #ddd; margin-right: 3px; border-radius: 4px 4px 0 0">
+    <tab ng-repeat-end
+         style="border-top: 1px solid #ddd; border-right: 1px solid #ddd; margin-right: 3px; border-radius: 4px 4px 0 0">
         <tab-heading class="ui-sortable-handle">
             <a ng-click="createLayoutGroup(group)">
                 <span class="glyphicon glyphicon-plus"></span> Layout Group
@@ -60,3 +71,6 @@
         </tab-heading>
     </tab>
 </tabset>
+
+<div ng-repeat="layout in getAllLayouts() | filter:{active:true}" dashboard="layout.dashboard"
+     template-url="template/dashboard.html"></div>

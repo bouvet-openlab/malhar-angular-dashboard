@@ -23,6 +23,19 @@ describe('Directive: grouped-layouts', function(){
     angular.module('ui.sortable', []);
   });
 
+//  // mock dashboard directive
+//  beforeEach(module('ui.dashboard', function($compileProvider){
+//    $compileProvider.directive('dashboard', function(){
+//      var def = {
+//        priority: 9999,
+//        terminal: true,
+//        restrict:'EAC',
+//        template:'<div class="mock">this is a mock</div>'
+//      };
+//      return def;
+//    });
+//  }));
+
   // load the directive's module
   beforeEach(module('ui.dashboard', function ($provide) {
     $mockModal = {
@@ -53,7 +66,16 @@ describe('Directive: grouped-layouts', function(){
                 layouts: [
                   {
                     id: 1,
-                    title: 'a title'
+                    title: 'a title',
+                    active: true
+                  },
+                  {
+                    id: 2,
+                    title: 'a title2'
+                  },
+                  {
+                    id: 3,
+                    title: 'a title2'
                   }
                 ]
               },
@@ -84,7 +106,7 @@ describe('Directive: grouped-layouts', function(){
       }
     };
 
-    element = $compile('<div grouped-layouts="dashboardOptions"></div>div>')($rootScope);
+    element = $compile('<div grouped-layouts="dashboardOptions"></div>')($rootScope);
     $rootScope.$digest();
     childScope = element.scope();
   }));
@@ -111,11 +133,18 @@ describe('Directive: grouped-layouts', function(){
     expect(customElement.find('div.custom-class').length).toEqual(1, 'Should contain div with class custom-class');
   }));
 
-  it('should initialize scope variables', function(){
-    expect(childScope.options).toBe(options);
-
-    expect(options.defaultGroupLayouts.groups.length).toBe(childScope.groups.length);
-  });
+//  it('should initialize scope variables', inject(function($compile){
+//    spyOn(GroupedStorage.prototype, 'getActiveLayout').and.callThrough();
+//
+//    element = $compile('<div grouped-layouts="dashboardOptions"></div>')($rootScope);
+//    $rootScope.$digest();
+//
+//    expect(childScope.options).toBe(options);
+//
+//    expect(options.defaultGroupLayouts.groups.length).toBe(childScope.groups.length);
+//    expect(childScope.currentDashboard).toBe(childScope.groups[0].layoutGroups[0].layouts[0]);
+//    expect(GroupedStorage.prototype.getActiveLayout).toHaveBeenCalled();
+//  }));
 
   // TODO: Should set an active dashboard
 
@@ -309,5 +338,239 @@ describe('Directive: grouped-layouts', function(){
       expect(layoutGroup.layouts.indexOf(result) >= 0).toBe(true);
       expect(result.id > 0).toBe(true);
     });
+
+    it('should set active=true on the newly created layout and pass to _makeLayoutActive', function() {
+      spyOn(childScope, '_makeLayoutActive');
+      var layoutGroup = childScope.groups[0].layoutGroups[0];
+
+      var result = childScope.createLayout(layoutGroup);
+      expect(result.active).toEqual(true);
+
+      expect(childScope._makeLayoutActive).toHaveBeenCalledWith(result);
+    });
+  });
+
+  describe('the makeLayoutActive method', function(){
+
+    it('should call _makeLayoutActive if there is not a currently active dashboard with unsaved changes', function() {
+      spyOn(childScope, '_makeLayoutActive');
+      var layout = childScope.groups[0].layoutGroups[0].layouts[1];
+      childScope.makeLayoutActive(layout);
+      expect(childScope._makeLayoutActive).toHaveBeenCalled();
+    });
+
+    describe('when there are unsaved changes on the current dashboard', function() {
+
+      var current, options, successCb, errorCb, layout;
+
+      beforeEach(function() {
+        current = childScope.groups[0].layoutGroups[0].layouts[0];
+        current.dashboard.unsavedChangeCount = 1;
+
+        spyOn($mockModal, 'open').and.callFake(function(arg) {
+          options = arg;
+          return {
+            result: {
+              then: function(success, error) {
+                successCb = success;
+                errorCb = error;
+              }
+            }
+          }
+        });
+
+        layout = childScope.groups[0].layoutGroups[0].layouts[1];
+        childScope.makeLayoutActive(layout);
+      });
+
+      it('should create a modal', function() {
+        expect($mockModal.open).toHaveBeenCalled();
+      });
+
+      it('should resolve layout to the layout to be made active', function() {
+        expect(options.resolve.layout()).toEqual(layout);
+      });
+
+      it('should provide a success callback that saves the current dashboard and then calls _makeLayoutActive', function() {
+        spyOn(current.dashboard, 'saveDashboard');
+
+        spyOn(childScope, '_makeLayoutActive');
+        successCb();
+
+        expect(current.dashboard.saveDashboard).toHaveBeenCalled();
+        expect(childScope._makeLayoutActive).toHaveBeenCalled();
+        expect(childScope._makeLayoutActive.calls.argsFor(0)[0]).toEqual(layout);
+      });
+
+      it('should provide an error callback that only calls _makeLayoutActive', function() {
+        spyOn(current.dashboard, 'saveDashboard');
+        spyOn(childScope, '_makeLayoutActive');
+
+        errorCb();
+
+        expect(current.dashboard.saveDashboard).not.toHaveBeenCalled();
+        expect(childScope._makeLayoutActive).toHaveBeenCalled();
+        expect(childScope._makeLayoutActive.calls.argsFor(0)[0]).toEqual(layout);
+      });
+    });
+
+    describe('when _makeLayoutActive is invoked', function(){
+      beforeEach(inject(function($compile){
+        var groups = [
+          {
+            layoutGroups: [
+              {
+                active: false,
+                layouts: [
+                  {active: false},
+                  {active: false}
+                ]
+              },
+              {
+                active: false,
+                layouts: [
+                  {active: false},
+                  {active: false}
+                ]
+              }
+            ]
+          },
+          {
+            layoutGroups: [
+              {
+                active: false,
+                layouts: [
+                  {active: false},
+                  {active: false}
+                ]
+              },
+              {
+                active: false,
+                layouts: [
+                  {active: false},
+                  {active: false}
+                ]
+              }
+            ]
+          }
+        ];
+        options.defaultGroupLayouts.groups = groups;
+
+        element = $compile('<div grouped-layouts="dashboardOptions"></div>')($rootScope);
+        $rootScope.$digest();
+        childScope = element.scope();
+
+        //childScope.groups = groups;
+      }));
+
+      it('should call _ensureActiveLayout and save on groupedStorage', function(){
+        spyOn(GroupedStorage.prototype, '_ensureActiveLayout').and.callThrough();
+        spyOn(GroupedStorage.prototype, 'save').and.callThrough();
+
+        childScope._makeLayoutActive(childScope.groups[0].layoutGroups[0].layouts[1]);
+
+        expect(GroupedStorage.prototype._ensureActiveLayout).toHaveBeenCalled();
+        expect(GroupedStorage.prototype.save).toHaveBeenCalled();
+      });
+
+      it('should set layout as only active when invoking _makeLayoutActive', function(){
+        var layout = childScope.groups[1].layoutGroups[0].layouts[1];
+
+        childScope._makeLayoutActive(layout);
+
+        expect(childScope.groups[0].layoutGroups[0].active).toBe(false); //
+        expect(childScope.groups[0].layoutGroups[0].layouts[0].active).toBe(false);
+        expect(childScope.groups[0].layoutGroups[0].layouts[1].active).toBe(false);
+
+        expect(childScope.groups[0].layoutGroups[1].active).toBe(false);
+        expect(childScope.groups[0].layoutGroups[1].layouts[0].active).toBe(false);
+        expect(childScope.groups[0].layoutGroups[1].layouts[1].active).toBe(false);
+
+        expect(childScope.groups[1].layoutGroups[0].active).toBe(true); //
+        expect(childScope.groups[1].layoutGroups[0].layouts[0].active).toBe(false);
+        expect(childScope.groups[1].layoutGroups[0].layouts[1].active).toBe(true);ø
+
+        expect(childScope.groups[1].layoutGroups[1].active).toBe(false);
+        expect(childScope.groups[1].layoutGroups[1].layouts[0].active).toBe(false);
+        expect(childScope.groups[1].layoutGroups[1].layouts[1].active).toBe(false);
+
+        expect(childScope.getAllLayouts().map(function(l){return l.active})).toEqual([false, false, false, false, false, true, false, false]);
+
+        //console.log(childScope.groups)
+      });
+    })
+  });
+
+  describe('the proxy methods to active layout', function() {
+
+    var mockDash, galSpy;
+
+    beforeEach(function() {
+      mockDash = {
+        active: true,
+        dashboard: {
+          addWidget: function() {},
+          loadWidgets: function() {},
+          saveDashboard: function() {}
+        }
+      };
+      spyOn(mockDash.dashboard, 'addWidget');
+      spyOn(mockDash.dashboard, 'loadWidgets');
+      spyOn(mockDash.dashboard, 'saveDashboard');
+      galSpy = spyOn(GroupedStorage.prototype, 'getActiveLayout').and;
+      galSpy.returnValue(mockDash);
+    });
+
+    describe('the addWidget method', function() {
+
+      it('should call dashboard.addWidget method of the active layout', function() {
+        options.addWidget(1,2,3);
+        expect(mockDash.dashboard.addWidget).toHaveBeenCalled();
+        expect(mockDash.dashboard.addWidget.calls.first()).toEqual({object: mockDash.dashboard, args: [1,2,3]});
+      });
+
+      it('should do nothing if there is no active layout', function() {
+        galSpy.returnValue(null);
+        expect(function() {
+          options.addWidget();
+        }).not.toThrow();
+      });
+
+    });
+
+    describe('the loadWidgets method', function() {
+
+      it('should call dashboard.loadWidgets of the current layout', function() {
+        options.loadWidgets(1,2,3);
+        expect(mockDash.dashboard.loadWidgets).toHaveBeenCalled();
+        expect(mockDash.dashboard.loadWidgets.calls.first()).toEqual({object: mockDash.dashboard, args: [1,2,3]});
+      });
+
+      it('should do nothing if there is no active layout', function() {
+        galSpy.returnValue(null);
+        expect(function() {
+          options.loadWidgets();
+        }).not.toThrow();
+      });
+
+    });
+
+    describe('the saveDashboard method', function() {
+
+      it('should call dashboard.saveDashboard of the current layout', function() {
+        options.saveDashboard(1,2,3);
+        expect(mockDash.dashboard.saveDashboard).toHaveBeenCalled();
+        expect(mockDash.dashboard.saveDashboard.calls.first()).toEqual({object: mockDash.dashboard, args: [1,2,3]});
+      });
+
+      it('should do nothing if there is no active layout', function() {
+        galSpy.returnValue(null);
+        expect(function() {
+          options.saveDashboard();
+        }).not.toThrow();
+      });
+
+    });
+
   });
 });

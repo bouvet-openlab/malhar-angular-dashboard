@@ -49,6 +49,7 @@ angular.module('ui.dashboard')
         this.states = {};
 
         this.load();
+        this._ensureActiveLayout();
       }
 
       GroupedStorage.prototype = {
@@ -68,6 +69,24 @@ angular.module('ui.dashboard')
           else {
             this._addDefaultGroups();
           }
+        },
+
+        getActiveLayout: function(){
+          for (var i = 0; i < this.groups.length; i++) {
+            var group = this.groups[i];
+            for (var j = 0; j < group.layoutGroups.length; j++) {
+              var layoutGroup = group.layoutGroups[j];
+              for (var k = 0; k < layoutGroup.layouts.length; k++) {
+                var layout = layoutGroup.layouts[k];
+
+                if (layout.active) {
+                  return layout;
+                }
+              }
+            }
+          }
+
+          return false;
         },
 
         add: function (groups) {
@@ -285,12 +304,61 @@ angular.module('ui.dashboard')
           self.add(deserialized.groups);
         },
 
-        _handleAsyncLoad: function(promise) {
+        _handleAsyncLoad: function (promise) {
           var self = this;
           promise.then(
             angular.bind(self, this._handleSyncLoad),
             angular.bind(self, this._addDefaultGroups)
           );
+        },
+
+        _ensureActiveLayout: function () {
+
+          var foundLayout = false;
+          var foundLayoutGroup = false;
+
+          for (var i = 0; i < this.groups.length; i++) {
+            var group = this.groups[i];
+            for (var j = 0; j < group.layoutGroups.length; j++) {
+              var layoutGroup = group.layoutGroups[j];
+              for (var k = 0; k < layoutGroup.layouts.length; k++) {
+                var layout = layoutGroup.layouts[k];
+
+                if (layout.active) {
+                  if (foundLayout) {
+                    layout.active = false;
+                  }
+                  else {
+                    layoutGroup.active = true;
+                    foundLayout = true;
+                  }
+                }
+              }
+
+              if (layoutGroup.active){
+                if (foundLayoutGroup){
+                  layoutGroup.active = false;
+                }
+                else {
+                  foundLayoutGroup = true;
+                }
+              }
+            }
+          }
+
+          if (foundLayout) {
+            return;
+          }
+
+          if (this.groups[0]) {
+            if (this.groups[0].layoutGroups[0]) {
+              this.groups[0].layoutGroups[0].active = true;
+
+              if (this.groups[0].layoutGroups[0].layouts[0]) {
+                this.groups[0].layoutGroups[0].layouts[0].active = true;
+              }
+            }
+          }
         },
 
         _getGroupId: function (group) {

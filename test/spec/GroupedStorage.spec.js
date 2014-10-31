@@ -46,6 +46,11 @@ describe('GroupedStorage service', function () {
                   {
                     id: 1,
                     title: 'Default Layout 1'
+                  },
+                  {
+                    id: 2,
+                    title: 'I am active',
+                    active: true
                   }
                 ]
               },
@@ -93,7 +98,6 @@ describe('GroupedStorage service', function () {
   });
 
   describe('the constructor', function () {
-
 
     beforeEach(function () {
       storage = new GroupedStorage(options);
@@ -163,8 +167,6 @@ describe('GroupedStorage service', function () {
       storage = new GroupedStorage(options);
       expect(GroupedStorage.prototype.load).toHaveBeenCalled();
     });
-
-    // TODO: Should ensure active layout + layoutGroup
   });
 
   describe('the load method', function () {
@@ -320,7 +322,7 @@ describe('GroupedStorage service', function () {
       expect(GroupedStorage.prototype.addLayout).toHaveBeenCalled();
     });
 
-    it('should NOT use result from getItem for layouts if the storageHash doesnt match', function() {
+    it('should NOT use result from getItem for layouts if the storageHash doesnt match', function () {
       spyOn(options.storage, 'getItem').and.returnValue(JSON.stringify({
         storageHash: 'alskdjf02iej',
         groups: [
@@ -336,10 +338,12 @@ describe('GroupedStorage service', function () {
         }
       }));
       storage.load();
-      expect(storage.groups.map(function(l) {return l.groupTitle})).toEqual(['Default group 1', 'Default group 2', 'Default group 3']);
+      expect(storage.groups.map(function (l) {
+        return l.groupTitle
+      })).toEqual(['Default group 1', 'Default group 2', 'Default group 3']);
     });
 
-    it('should be able to handle async loading via promise', inject(function($rootScope,$q) {
+    it('should be able to handle async loading via promise', inject(function ($rootScope, $q) {
       var deferred = $q.defer();
       spyOn(options.storage, 'getItem').and.returnValue(deferred.promise);
       storage.load();
@@ -359,19 +363,23 @@ describe('GroupedStorage service', function () {
         }
       }));
       $rootScope.$apply();
-      expect(storage.groups.map(function(l) {return l.groupTitle})).toEqual(['title', 'title2', 'title3', 'custom']);
+      expect(storage.groups.map(function (l) {
+        return l.groupTitle
+      })).toEqual(['title', 'title2', 'title3', 'custom']);
     }));
 
-    it('should load defaults if the deferred is rejected', inject(function($rootScope,$q) {
+    it('should load defaults if the deferred is rejected', inject(function ($rootScope, $q) {
       var deferred = $q.defer();
       spyOn(options.storage, 'getItem').and.returnValue(deferred.promise);
       storage.load();
       deferred.reject();
       $rootScope.$apply();
-      expect(storage.groups.map(function(l) {return l.groupTitle})).toEqual(['Default group 1', 'Default group 2', 'Default group 3']);
+      expect(storage.groups.map(function (l) {
+        return l.groupTitle
+      })).toEqual(['Default group 1', 'Default group 2', 'Default group 3']);
     }));
 
-    it('should load defaults if the json is malformed', inject(function($rootScope,$q) {
+    it('should load defaults if the json is malformed', inject(function ($rootScope, $q) {
       var deferred = $q.defer();
       spyOn(options.storage, 'getItem').and.returnValue(deferred.promise);
       storage.load();
@@ -389,12 +397,14 @@ describe('GroupedStorage service', function () {
           1: {},
           2: {}
         }
-      }).replace('{','{{'));
+      }).replace('{', '{{'));
       $rootScope.$apply();
-      expect(storage.groups.map(function(l) {return l.groupTitle})).toEqual(['Default group 1', 'Default group 2', 'Default group 3']);
+      expect(storage.groups.map(function (l) {
+        return l.groupTitle
+      })).toEqual(['Default group 1', 'Default group 2', 'Default group 3']);
     }));
 
-    it('should not try to JSON.parse the result if stringifyStorage is false.', function() {
+    it('should not try to JSON.parse the result if stringifyStorage is false.', function () {
       options.stringifyStorage = false;
       storage = new GroupedStorage(options);
       spyOn(options.storage, 'getItem').and.returnValue({
@@ -412,13 +422,17 @@ describe('GroupedStorage service', function () {
         }
       });
       storage.load();
-      expect(storage.groups.map(function(l) {return l.groupTitle})).toEqual(['title', 'title2', 'title3', 'custom']);
+      expect(storage.groups.map(function (l) {
+        return l.groupTitle
+      })).toEqual(['title', 'title2', 'title3', 'custom']);
     });
 
-    it('should set states to states from serialized object', function() {
+    it('should set states to states from serialized object', function () {
       var storedEntry = {
         storageHash: 'ds5f9d1f',
-        groups: [{id: 1, groupTitle: 'title'}],
+        groups: [
+          {id: 1, groupTitle: 'title'}
+        ],
         states: {
           0: {title: 'item 1'},
           1: {title: 'item 2'},
@@ -432,13 +446,197 @@ describe('GroupedStorage service', function () {
     });
   });
 
-  describe('the _serializeGroups method', function(){
+  describe('the _ensureActiveLayout method', function () {
+    var groups;
+
+    beforeEach(function(){
+      groups = [
+        {
+          layoutGroups: [
+            {
+              active: false,
+              layouts: [
+                {active: false},
+                {active: false}
+              ]
+            },
+            {
+              active: false,
+              layouts: [
+                {active: false},
+                {active: false}
+              ]
+            }
+          ]
+        },
+        {
+          layoutGroups: [
+            {
+              active: false,
+              layouts: [
+                {active: false},
+                {active: false}
+              ]
+            },
+            {
+              active: false,
+              layouts: [
+                {active: false},
+                {active: false}
+              ]
+            }
+          ]
+        }
+      ];
+    });
+
+    it('should be called on load', function () {
+      spyOn(GroupedStorage.prototype, '_ensureActiveLayout').and.callThrough();
+
+      storage = new GroupedStorage(options);
+
+      expect(GroupedStorage.prototype._ensureActiveLayout).toHaveBeenCalled();
+    });
+
+    it('should not modify active when already set', function () {
+      groups[1].layoutGroups[0].active = true;
+      groups[1].layoutGroups[0].layouts[1].active = true;
+
+      storage.groups = groups;
+
+      storage._ensureActiveLayout();
+
+      expect(storage.groups[0].layoutGroups[0].active).toBe(false);
+      expect(storage.groups[0].layoutGroups[0].layouts[0].active).toBe(false);
+      expect(storage.groups[0].layoutGroups[0].layouts[1].active).toBe(false);
+
+      expect(storage.groups[0].layoutGroups[1].active).toBe(false);
+      expect(storage.groups[0].layoutGroups[1].layouts[0].active).toBe(false);
+      expect(storage.groups[0].layoutGroups[1].layouts[1].active).toBe(false);
+
+      expect(storage.groups[1].layoutGroups[0].active).toBe(true);
+      expect(storage.groups[1].layoutGroups[0].layouts[0].active).toBe(false);
+      expect(storage.groups[1].layoutGroups[0].layouts[1].active).toBe(true);
+
+      expect(storage.groups[1].layoutGroups[1].active).toBe(false);
+      expect(storage.groups[1].layoutGroups[1].layouts[0].active).toBe(false);
+      expect(storage.groups[1].layoutGroups[1].layouts[1].active).toBe(false);
+    });
+
+    it('should set first layout to true if no active layout', function(){
+      storage.groups = groups;
+
+      storage._ensureActiveLayout();
+
+      expect(storage.groups[0].layoutGroups[0].active).toBe(true);
+      expect(storage.groups[0].layoutGroups[0].layouts[0].active).toBe(true);
+      expect(storage.groups[0].layoutGroups[0].layouts[1].active).toBe(false);
+
+      expect(storage.groups[0].layoutGroups[1].active).toBe(false);
+      expect(storage.groups[0].layoutGroups[1].layouts[0].active).toBe(false);
+      expect(storage.groups[0].layoutGroups[1].layouts[1].active).toBe(false);
+
+      expect(storage.groups[1].layoutGroups[0].active).toBe(false);
+      expect(storage.groups[1].layoutGroups[0].layouts[0].active).toBe(false);
+      expect(storage.groups[1].layoutGroups[0].layouts[1].active).toBe(false);
+
+      expect(storage.groups[1].layoutGroups[1].active).toBe(false);
+      expect(storage.groups[1].layoutGroups[1].layouts[0].active).toBe(false);
+      expect(storage.groups[1].layoutGroups[1].layouts[1].active).toBe(false);
+    });
+
+    it('should set first layoutGroup to active if one if its layouts are active', function(){
+      storage.groups = groups;
+
+      storage.groups[0].layoutGroups[0].layouts[1].active = true;
+
+      storage._ensureActiveLayout();
+
+      expect(storage.groups[0].layoutGroups[0].active).toBe(true);
+      expect(storage.groups[0].layoutGroups[0].layouts[0].active).toBe(false);
+      expect(storage.groups[0].layoutGroups[0].layouts[1].active).toBe(true);
+    });
+
+    it('should keep only first layout as active if multiple are active', function(){
+      storage.groups = groups;
+
+      storage.groups[0].layoutGroups[0].active = true;
+      storage.groups[0].layoutGroups[0].layouts[1].active = true;
+
+      storage.groups[1].layoutGroups[1].active = true;
+      storage.groups[1].layoutGroups[1].layouts[0].active = true;
+
+      storage._ensureActiveLayout();
+
+      expect(storage.groups[0].layoutGroups[0].active).toBe(true);
+      expect(storage.groups[0].layoutGroups[0].layouts[1].active).toBe(true);
+
+      expect(storage.groups[1].layoutGroups[1].active).toBe(false);
+      expect(storage.groups[1].layoutGroups[1].layouts[0].active).toBe(false);
+    });
+
+    it('should cleanup the mess!', function(){
+      storage.groups = groups;
+
+      storage.groups[0].layoutGroups[0].active = false;
+      storage.groups[0].layoutGroups[0].layouts[1].active = true;
+
+      storage.groups[0].layoutGroups[1].layouts[0].active = true;
+      storage.groups[0].layoutGroups[1].layouts[1].active = true;
+
+      storage.groups[1].layoutGroups[0].active = true;
+
+      storage.groups[1].layoutGroups[1].active = true;
+      storage.groups[1].layoutGroups[1].layouts[0].active = true;
+      storage.groups[1].layoutGroups[1].layouts[1].active = true;
+
+      storage._ensureActiveLayout();
+
+      expect(storage.groups[0].layoutGroups[0].active).toBe(true);
+      expect(storage.groups[0].layoutGroups[0].layouts[0].active).toBe(false);
+      expect(storage.groups[0].layoutGroups[0].layouts[1].active).toBe(true);
+
+      expect(storage.groups[0].layoutGroups[1].active).toBe(false);
+      expect(storage.groups[0].layoutGroups[1].layouts[0].active).toBe(false);
+      expect(storage.groups[0].layoutGroups[1].layouts[1].active).toBe(false);
+
+      expect(storage.groups[1].layoutGroups[0].active).toBe(false);
+      expect(storage.groups[1].layoutGroups[0].layouts[0].active).toBe(false);
+      expect(storage.groups[1].layoutGroups[0].layouts[1].active).toBe(false);
+
+      expect(storage.groups[1].layoutGroups[1].active).toBe(false);
+      expect(storage.groups[1].layoutGroups[1].layouts[0].active).toBe(false);
+      expect(storage.groups[1].layoutGroups[1].layouts[1].active).toBe(false);
+    });
+  });
+
+  describe('the getActiveLayout method', function(){
 
     beforeEach(function () {
       storage = new GroupedStorage(options);
     });
 
-    it('should serialize group values', function(){
+    it('should return the layout with active:true', function() {
+      var layout = storage.getActiveLayout();
+
+      expect(layout.title).toEqual('I am active');
+    });
+
+    it('should return false if no layout is active', function() {
+      var layout = storage.getActiveLayout();
+      layout.active = false;
+      var result = storage.getActiveLayout();
+      expect(result).toEqual(false);
+    });
+  });
+
+  describe('the _serializeGroups method', function () {
+
+    beforeEach(function () {
+      storage = new GroupedStorage(options);
+    });
+
+    it('should serialize group values', function () {
       var groups = [
         {id: 1, groupTitle: 'some group'},
         {id: 7, groupTitle: 'other group'}
@@ -456,7 +654,7 @@ describe('GroupedStorage service', function () {
       expect(result[1].layoutGroups).toEqual([]);
     });
 
-    it('should serialize layoutGroup values', function(){
+    it('should serialize layoutGroup values', function () {
       var groups = [
         {id: 1, groupTitle: 'some group', layoutGroups: [
           {id: 4, layoutGroupTitle: 'some layoutGroup', active: true},
@@ -480,7 +678,7 @@ describe('GroupedStorage service', function () {
       expect(result[0].layoutGroups[1].layouts).toEqual([]);
     });
 
-    it('should serialize layout values', function(){
+    it('should serialize layout values', function () {
 
       var defWid = {aProperty: 'a'};
       var groups = [
@@ -977,4 +1175,5 @@ describe('GroupedStorage service', function () {
     });
 
   });
-});
+})
+;

@@ -524,7 +524,7 @@ angular.module('ui.dashboard')
 
 angular.module('ui.dashboard')
   .directive('groupedLayouts', [
-    'GroupedStorage', '$timeout', function(GroupedStorage, $timeout){
+    'GroupedStorage', '$timeout', '$modal', function (GroupedStorage, $timeout, $modal) {
       return {
         scope: true,
         templateUrl: function (element, attr) {
@@ -537,23 +537,39 @@ angular.module('ui.dashboard')
 
           scope.groups = groupedStorage.groups;
 
-          scope.editTitle = function(objectToEdit, selector){
+          //scope.currentDashboard = groupedStorage.getActiveLayout();
+
+          scope.getAllLayouts = function() {
+            var layouts = [];
+
+            angular.forEach(scope.groups, function(group){
+              angular.forEach(group.layoutGroups, function(layoutGroup){
+                angular.forEach(layoutGroup.layouts, function(layout){
+                  layouts.push(layout);
+                });
+              });
+            });
+
+            return layouts;
+          };
+
+          scope.editTitle = function (objectToEdit, selector) {
             objectToEdit.editingTitle = true;
 
             var input = element.find('input[name="' + selector + '"]');
 
-            $timeout(function(){
+            $timeout(function () {
               input.focus()[0].setSelectionRange(0, 9999);
             });
           };
 
-          scope.saveTitleEdit = function(objectEdited){
+          scope.saveTitleEdit = function (objectEdited) {
             objectEdited.editingTitle = false;
 
             groupedStorage.save();
           };
 
-          scope.createGroup = function(){
+          scope.createGroup = function () {
             var group = {groupTitle: 'Custom group'};
 
             groupedStorage.add(group);
@@ -562,12 +578,12 @@ angular.module('ui.dashboard')
             return group;
           };
 
-          scope.removeGroup = function(group){
+          scope.removeGroup = function (group) {
             groupedStorage.remove(group);
             groupedStorage.save();
           };
 
-          scope.createLayoutGroup = function(group){
+          scope.createLayoutGroup = function (group) {
             var layoutGroup = {layoutGroupTitle: 'Custom layout group'};
 
             groupedStorage.addLayoutGroup(group, layoutGroup);
@@ -576,18 +592,82 @@ angular.module('ui.dashboard')
             return layoutGroup;
           };
 
-          scope.removeLayoutGroup = function(layoutGroup){
+          scope.removeLayoutGroup = function (layoutGroup) {
             groupedStorage.removeLayoutGroup(layoutGroup);
             groupedStorage.save();
           };
 
-          scope.createLayout = function(layoutGroup){
-            var layout = {title: 'Custom'};
+          scope.createLayout = function (layoutGroup) {
+            var layout = {title: 'Custom', active: true}; // TODO Add layout or make active should handle
 
             groupedStorage.addLayout(layoutGroup, layout);
             groupedStorage.save();
 
+            scope._makeLayoutActive(layout);
+
             return layout;
+          };
+
+          scope.makeLayoutActive = function (layout) {
+            var current = groupedStorage.getActiveLayout();
+
+            if (current && current.dashboard.unsavedChangeCount) {
+              var modalInstance = $modal.open({
+                templateUrl: 'template/save-changes-modal.html',
+                resolve: {
+                  layout: function () {
+                    return layout;
+                  }
+                },
+                controller: 'SaveChangesModalCtrl'
+              });
+
+              // Set resolve and reject callbacks for the result promise
+              modalInstance.result.then(
+                function() {
+                  current.dashboard.saveDashboard();
+                  scope._makeLayoutActive(layout);
+                },
+                function() {
+                  scope._makeLayoutActive(layout);
+                }
+              );
+            } else {
+              scope._makeLayoutActive(layout);
+            }
+          };
+
+          scope._makeLayoutActive = function (layout) {
+            angular.forEach(scope.getAllLayouts(), function(l) {
+              if (l !== layout) {
+                l.active = false;
+              } else {
+                l.active = true;
+              }
+            });
+            groupedStorage._ensureActiveLayout();
+            groupedStorage.save();
+          };
+
+          scope.options.addWidget = function() {
+            var layout = groupedStorage.getActiveLayout();
+            if (layout) {
+              layout.dashboard.addWidget.apply(layout.dashboard, arguments);
+            }
+          };
+
+          scope.options.loadWidgets = function(){
+            var layout = groupedStorage.getActiveLayout();
+            if (layout) {
+              layout.dashboard.loadWidgets.apply(layout.dashboard, arguments);
+            }
+          };
+
+          scope.options.saveDashboard = function() {
+            var layout = groupedStorage.getActiveLayout();
+            if (layout) {
+              layout.dashboard.saveDashboard.apply(layout.dashboard, arguments);
+            }
           };
         }
       };
@@ -1040,6 +1120,7 @@ angular.module('ui.dashboard')
         this.states = {};
 
         this.load();
+        this._ensureActiveLayout();
       }
 
       GroupedStorage.prototype = {
@@ -1059,6 +1140,24 @@ angular.module('ui.dashboard')
           else {
             this._addDefaultGroups();
           }
+        },
+
+        getActiveLayout: function(){
+          for (var i = 0; i < this.groups.length; i++) {
+            var group = this.groups[i];
+            for (var j = 0; j < group.layoutGroups.length; j++) {
+              var layoutGroup = group.layoutGroups[j];
+              for (var k = 0; k < layoutGroup.layouts.length; k++) {
+                var layout = layoutGroup.layouts[k];
+
+                if (layout.active) {
+                  return layout;
+                }
+              }
+            }
+          }
+
+          return false;
         },
 
         add: function (groups) {
@@ -1276,12 +1375,61 @@ angular.module('ui.dashboard')
           self.add(deserialized.groups);
         },
 
-        _handleAsyncLoad: function(promise) {
+        _handleAsyncLoad: function (promise) {
           var self = this;
           promise.then(
             angular.bind(self, this._handleSyncLoad),
             angular.bind(self, this._addDefaultGroups)
           );
+        },
+
+        _ensureActiveLayout: function () {
+
+          var foundLayout = false;
+          var foundLayoutGroup = false;
+
+          for (var i = 0; i < this.groups.length; i++) {
+            var group = this.groups[i];
+            for (var j = 0; j < group.layoutGroups.length; j++) {
+              var layoutGroup = group.layoutGroups[j];
+              for (var k = 0; k < layoutGroup.layouts.length; k++) {
+                var layout = layoutGroup.layouts[k];
+
+                if (layout.active) {
+                  if (foundLayout) {
+                    layout.active = false;
+                  }
+                  else {
+                    layoutGroup.active = true;
+                    foundLayout = true;
+                  }
+                }
+              }
+
+              if (layoutGroup.active){
+                if (foundLayoutGroup){
+                  layoutGroup.active = false;
+                }
+                else {
+                  foundLayoutGroup = true;
+                }
+              }
+            }
+          }
+
+          if (foundLayout) {
+            return;
+          }
+
+          if (this.groups[0]) {
+            if (this.groups[0].layoutGroups[0]) {
+              this.groups[0].layoutGroups[0].active = true;
+
+              if (this.groups[0].layoutGroups[0].layouts[0]) {
+                this.groups[0].layoutGroups[0].layouts[0].active = true;
+              }
+            }
+          }
         },
 
         _getGroupId: function (group) {
@@ -2631,17 +2779,23 @@ angular.module("ui.dashboard").run(["$templateCache", function($templateCache) {
     "\n" +
     "        <tab-heading>\r" +
     "\n" +
-    "            <span ng-dblclick=\"editTitle(group, 'group' + group.id)\" ng-show=\"!group.editingTitle\">{{group.groupTitle}}</span>\r" +
+    "            <span ng-dblclick=\"editTitle(group, 'group' + group.id)\"\r" +
+    "\n" +
+    "                  ng-show=\"!group.editingTitle\">{{group.groupTitle}}</span>\r" +
     "\n" +
     "\r" +
     "\n" +
     "            <form action=\"\" class=\"group-title\" ng-show=\"group.editingTitle\" ng-submit=\"saveTitleEdit(group)\">\r" +
     "\n" +
-    "                <input type=\"text\" ng-model=\"group.groupTitle\" class=\"form-control\" name=\"group{{group.id}}\" data-layout=\"{{group.id}}\">\r" +
+    "                <input type=\"text\" ng-model=\"group.groupTitle\" class=\"form-control\" name=\"group{{group.id}}\"\r" +
+    "\n" +
+    "                       data-layout=\"{{group.id}}\">\r" +
     "\n" +
     "            </form>\r" +
     "\n" +
-    "            <span ng-if=\"!group.locked\" ng-click=\"removeGroup(group)\" class=\"glyphicon glyphicon-remove remove-layout-icon\"></span>\r" +
+    "            <span ng-if=\"!group.locked\" ng-click=\"removeGroup(group)\"\r" +
+    "\n" +
+    "                  class=\"glyphicon glyphicon-remove remove-layout-icon\"></span>\r" +
     "\n" +
     "        </tab-heading>\r" +
     "\n" +
@@ -2653,7 +2807,9 @@ angular.module("ui.dashboard").run(["$templateCache", function($templateCache) {
     "\n" +
     "        <tab-heading>\r" +
     "\n" +
-    "            <span ng-dblclick=\"editTitle(layoutGroup, 'layoutGroup' + layoutGroup.id)\" ng-show=\"!layoutGroup.editingTitle\">{{layoutGroup.layoutGroupTitle}}</span>\r" +
+    "            <span ng-dblclick=\"editTitle(layoutGroup, 'layoutGroup' + layoutGroup.id)\"\r" +
+    "\n" +
+    "                  ng-show=\"!layoutGroup.editingTitle\">{{layoutGroup.layoutGroupTitle}}</span>\r" +
     "\n" +
     "\r" +
     "\n" +
@@ -2661,13 +2817,17 @@ angular.module("ui.dashboard").run(["$templateCache", function($templateCache) {
     "\n" +
     "                  ng-submit=\"saveTitleEdit(layoutGroup)\">\r" +
     "\n" +
-    "                <input type=\"text\" ng-model=\"layoutGroup.layoutGroupTitle\" class=\"form-control\" name=\"layoutGroup{{layoutGroup.id}}\"\r" +
+    "                <input type=\"text\" ng-model=\"layoutGroup.layoutGroupTitle\" class=\"form-control\"\r" +
+    "\n" +
+    "                       name=\"layoutGroup{{layoutGroup.id}}\"\r" +
     "\n" +
     "                       data-layout=\"{{group.id}}{{layoutGroup.layoutGroupTitle}}\">\r" +
     "\n" +
     "            </form>\r" +
     "\n" +
-    "            <span ng-if=\"!layoutGroup.locked\" ng-click=\"removeLayoutGroup(layoutGroup)\" class=\"glyphicon glyphicon-remove remove-layout-icon\"></span>\r" +
+    "            <span ng-if=\"!layoutGroup.locked\" ng-click=\"removeLayoutGroup(layoutGroup)\"\r" +
+    "\n" +
+    "                  class=\"glyphicon glyphicon-remove remove-layout-icon\"></span>\r" +
     "\n" +
     "        </tab-heading>\r" +
     "\n" +
@@ -2679,19 +2839,27 @@ angular.module("ui.dashboard").run(["$templateCache", function($templateCache) {
     "\n" +
     "                <tab-heading>\r" +
     "\n" +
-    "                    <span ng-dblclick=\"editTitle(layout, 'layout' + layout.id)\" ng-show=\"!layout.editingTitle\">{{layout.title}}</span>\r" +
+    "                    <a ng-click=\"makeLayoutActive(layout)\">\r" +
+    "\n" +
+    "                        <span ng-dblclick=\"editTitle(layout, 'layout' + layout.id)\" ng-show=\"!layout.editingTitle\">{{layout.title}}</span>\r" +
     "\n" +
     "\r" +
     "\n" +
-    "                    <form action=\"\" class=\"layout-title\" ng-show=\"layout.editingTitle\" ng-submit=\"saveTitleEdit(layout)\">\r" +
+    "                        <form action=\"\" class=\"layout-title\" ng-show=\"layout.editingTitle\"\r" +
     "\n" +
-    "                        <input type=\"text\" ng-model=\"layout.title\" class=\"form-control\" name=\"layout{{layout.id}}\"\r" +
+    "                              ng-submit=\"saveTitleEdit(layout)\">\r" +
     "\n" +
-    "                               data-layout=\"{{group.id}}{{layoutGroup.id}}{{layout.layout}}\">\r" +
+    "                            <input type=\"text\" ng-model=\"layout.title\" class=\"form-control\" name=\"layout{{layout.id}}\"\r" +
     "\n" +
-    "                    </form>\r" +
+    "                                   data-layout=\"{{group.id}}{{layoutGroup.id}}{{layout.layout}}\">\r" +
     "\n" +
-    "                    <span ng-if=\"!layout.locked\" ng-click=\"removeLayout(layout)\" class=\"glyphicon glyphicon-remove remove-layout-icon\"></span>\r" +
+    "                        </form>\r" +
+    "\n" +
+    "                        <span ng-if=\"!layout.locked\" ng-click=\"removeLayout(layout)\"\r" +
+    "\n" +
+    "                              class=\"glyphicon glyphicon-remove remove-layout-icon\"></span>\r" +
+    "\n" +
+    "                    </a>\r" +
     "\n" +
     "                </tab-heading>\r" +
     "\n" +
@@ -2715,7 +2883,9 @@ angular.module("ui.dashboard").run(["$templateCache", function($templateCache) {
     "\n" +
     "    </tab>\r" +
     "\n" +
-    "    <tab ng-repeat-end  style=\"border-top: 1px solid #ddd; border-right: 1px solid #ddd; margin-right: 3px; border-radius: 4px 4px 0 0\">\r" +
+    "    <tab ng-repeat-end\r" +
+    "\n" +
+    "         style=\"border-top: 1px solid #ddd; border-right: 1px solid #ddd; margin-right: 3px; border-radius: 4px 4px 0 0\">\r" +
     "\n" +
     "        <tab-heading class=\"ui-sortable-handle\">\r" +
     "\n" +
@@ -2743,7 +2913,13 @@ angular.module("ui.dashboard").run(["$templateCache", function($templateCache) {
     "\n" +
     "    </tab>\r" +
     "\n" +
-    "</tabset>"
+    "</tabset>\r" +
+    "\n" +
+    "\r" +
+    "\n" +
+    "<div ng-repeat=\"layout in getAllLayouts() | filter:{active:true}\" dashboard=\"layout.dashboard\"\r" +
+    "\n" +
+    "     template-url=\"template/dashboard.html\"></div>"
   );
 
   $templateCache.put("template/save-changes-modal.html",
