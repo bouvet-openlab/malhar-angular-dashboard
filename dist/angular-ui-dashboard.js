@@ -1409,6 +1409,8 @@ angular.module('ui.dashboard')
               if (layoutGroup.active){
                 if (foundLayoutGroup){
                   layoutGroup.active = false;
+                } else if (!foundLayout) {
+                  layoutGroup.active = false;
                 }
                 else {
                   foundLayoutGroup = true;

@@ -422,7 +422,7 @@ describe('Directive: grouped-layouts', function(){
               {
                 active: false,
                 layouts: [
-                  {active: false},
+                  {active: false, id: 1},
                   {active: false}
                 ]
               },
@@ -441,7 +441,7 @@ describe('Directive: grouped-layouts', function(){
                 active: false,
                 layouts: [
                   {active: false},
-                  {active: false}
+                  {active: false, id: 6}
                 ]
               },
               {
@@ -478,7 +478,7 @@ describe('Directive: grouped-layouts', function(){
 
         childScope._makeLayoutActive(layout);
 
-        expect(childScope.groups[0].layoutGroups[0].active).toBe(false); //
+        expect(childScope.groups[0].layoutGroups[0].active).toBe(false);
         expect(childScope.groups[0].layoutGroups[0].layouts[0].active).toBe(false);
         expect(childScope.groups[0].layoutGroups[0].layouts[1].active).toBe(false);
 
@@ -486,17 +486,15 @@ describe('Directive: grouped-layouts', function(){
         expect(childScope.groups[0].layoutGroups[1].layouts[0].active).toBe(false);
         expect(childScope.groups[0].layoutGroups[1].layouts[1].active).toBe(false);
 
-        expect(childScope.groups[1].layoutGroups[0].active).toBe(true); //
+        expect(childScope.groups[1].layoutGroups[0].active).toBe(true);
         expect(childScope.groups[1].layoutGroups[0].layouts[0].active).toBe(false);
-        expect(childScope.groups[1].layoutGroups[0].layouts[1].active).toBe(true);ø
+        expect(childScope.groups[1].layoutGroups[0].layouts[1].active).toBe(true);
 
         expect(childScope.groups[1].layoutGroups[1].active).toBe(false);
         expect(childScope.groups[1].layoutGroups[1].layouts[0].active).toBe(false);
         expect(childScope.groups[1].layoutGroups[1].layouts[1].active).toBe(false);
 
         expect(childScope.getAllLayouts().map(function(l){return l.active})).toEqual([false, false, false, false, false, true, false, false]);
-
-        //console.log(childScope.groups)
       });
     })
   });
