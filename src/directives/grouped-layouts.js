@@ -19,7 +19,7 @@ angular.module('ui.dashboard')
 
           scope.groups = groupedStorage.groups;
 
-          //scope.currentDashboard = groupedStorage.getActiveLayout();
+          scope.homeLayout = groupedStorage.homeLayout;
 
           scope.getAllLayouts = function() {
             var layouts = [];

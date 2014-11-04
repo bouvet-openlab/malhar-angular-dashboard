@@ -466,7 +466,7 @@ angular.module('ui.dashboard')
 
           scope.groups = groupedStorage.groups;
 
-          //scope.currentDashboard = groupedStorage.getActiveLayout();
+          scope.homeLayout = groupedStorage.homeLayout;
 
           scope.getAllLayouts = function() {
             var layouts = [];
@@ -847,6 +847,20 @@ angular.module('ui.dashboard')
           });
         },
 
+        addHomeLayout: function (homeLayout) {
+          if (!this.homeLayout && homeLayout) {
+            homeLayout.dashboard = homeLayout.dashboard || {};
+            homeLayout.dashboard.storage = this;
+            homeLayout.dashboard.storageId = homeLayout.id = this._getLayoutId(homeLayout);
+            homeLayout.dashboard.widgetDefinitions = this.widgetDefinitions;
+            homeLayout.dashboard.stringifyStorage = false;
+            homeLayout.dashboard.defaultWidgets = homeLayout.defaultWidgets || this.defaultWidgets;
+            homeLayout.dashboard.widgetButtons = this.widgetButtons;
+            homeLayout.dashboard.explicitSave = this.explicitSave;
+            this.homeLayout = homeLayout;
+          }
+        },
+
         addLayout: function (layoutGroup, layouts) {
           if (layouts) {
             if (!angular.isArray(layouts)) {
@@ -881,6 +895,9 @@ angular.module('ui.dashboard')
 
               if (index >= 0) {
 
+                layoutGroup.layouts.splice(index, 1);
+                delete this.states[layout.id];
+
                 if (layout.active) {
                   if (layoutGroup.layouts.length > 0) {
                     if (index > 0) {
@@ -890,9 +907,6 @@ angular.module('ui.dashboard')
                     }
                   }
                 }
-
-                layoutGroup.layouts.splice(index, 1);
-                delete this.states[layout.id];
 
                 this._ensureActiveLayout();
 
@@ -942,6 +956,8 @@ angular.module('ui.dashboard')
           angular.forEach(this.defaultGroupLayouts.groups, function (group) {
             self.add(_.clone(group));
           });
+
+          this.addHomeLayout(this.defaultGroupLayouts.homeLayout);
         },
 
         _serializeGroups: function () {
@@ -1011,6 +1027,7 @@ angular.module('ui.dashboard')
             this.states = deserialized.states;
           }
           self.add(deserialized.groups);
+          self.addHomeLayout(deserialized.homeLayout);
         },
 
         _handleAsyncLoad: function (promise) {
@@ -1025,6 +1042,11 @@ angular.module('ui.dashboard')
 
           var foundLayout = false;
           var foundLayoutGroup = false;
+
+          if (this.homeLayout && this.homeLayout.active){
+            foundLayout = true;
+            foundLayoutGroup = true;
+          }
 
           for (var i = 0; i < this.groups.length; i++) {
             var group = this.groups[i];
@@ -1061,7 +1083,9 @@ angular.module('ui.dashboard')
             return;
           }
 
-          if (this.groups[0]) {
+          if(this.homeLayout){
+            this.homeLayout.active = true;
+          } else if (this.groups[0]) {
             if (this.groups[0].layoutGroups[0]) {
               this.groups[0].layoutGroups[0].active = true;
 
@@ -1106,6 +1130,11 @@ angular.module('ui.dashboard')
           }
 
           var max = 0;
+
+          if(this.homeLayout){
+            max = Math.max(max, this.homeLayout.id * 1);
+          }
+
           angular.forEach(this.groups, function (g) {
             angular.forEach(g.layoutGroups, function (lg) {
               angular.forEach(lg.layouts, function (l) {

@@ -55,6 +55,10 @@ describe('Directive: grouped-layouts', function(){
 
     $rootScope.dashboardOptions = options = {
       defaultGroupLayouts: {
+        homeLayout: {
+          id: 4,
+          title: 'Start'
+        },
         groups: [
           {
             id: 1,
@@ -133,18 +137,17 @@ describe('Directive: grouped-layouts', function(){
     expect(customElement.find('div.custom-class').length).toEqual(1, 'Should contain div with class custom-class');
   }));
 
-//  it('should initialize scope variables', inject(function($compile){
-//    spyOn(GroupedStorage.prototype, 'getActiveLayout').and.callThrough();
-//
-//    element = $compile('<div grouped-layouts="dashboardOptions"></div>')($rootScope);
-//    $rootScope.$digest();
-//
-//    expect(childScope.options).toBe(options);
-//
-//    expect(options.defaultGroupLayouts.groups.length).toBe(childScope.groups.length);
-//    expect(childScope.currentDashboard).toBe(childScope.groups[0].layoutGroups[0].layouts[0]);
-//    expect(GroupedStorage.prototype.getActiveLayout).toHaveBeenCalled();
-//  }));
+  it('should initialize scope variables', inject(function($compile){
+    spyOn(GroupedStorage.prototype, 'getActiveLayout').and.callThrough();
+
+    element = $compile('<div grouped-layouts="dashboardOptions"></div>')($rootScope);
+    $rootScope.$digest();
+
+    expect(childScope.options).toBe(options);
+
+    expect(options.defaultGroupLayouts.groups.length).toBe(childScope.groups.length);
+    expect(childScope.homeLayout).toBe(options.defaultGroupLayouts.homeLayout);
+  }));
 
   // TODO: Should set an active dashboard
 
@@ -474,9 +477,12 @@ describe('Directive: grouped-layouts', function(){
       });
 
       it('should set layout as only active when invoking _makeLayoutActive', function(){
+
         var layout = childScope.groups[1].layoutGroups[0].layouts[1];
 
         childScope._makeLayoutActive(layout);
+
+        expect(childScope.homeLayout.active).toBe(false);
 
         expect(childScope.groups[0].layoutGroups[0].active).toBe(false);
         expect(childScope.groups[0].layoutGroups[0].layouts[0].active).toBe(false);

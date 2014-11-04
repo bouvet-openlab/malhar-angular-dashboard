@@ -73,7 +73,7 @@ angular.module('app', [
             description: 'This demo showcases dashboard layouts grouped'
         })
         .when('/layouts/grouped-layouts-home', {
-            templateUrl: 'groupedLayoutsHome.html',
+            templateUrl: 'groupedLayouts.html',
             controller: 'GroupedLayoutsHomeDemoCtrl',
             title: 'grouped layouts with home',
             description: 'This demo showcases dashboard layouts grouped with a home layout'
