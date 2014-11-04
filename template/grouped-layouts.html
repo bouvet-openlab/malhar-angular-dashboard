@@ -15,7 +15,7 @@
         </tab-heading>
 
     </tab>
-    <tab ng-repeat="layoutGroup in group.layoutGroups" style="border-top: 1px solid #ddd">
+    <tab ng-repeat="layoutGroup in group.layoutGroups" style="border-top: 1px solid #ddd" active="layoutGroup.active">
         <tab-heading>
             <span ng-dblclick="editTitle(layoutGroup, 'layoutGroup' + layoutGroup.id)"
                   ng-show="!layoutGroup.editingTitle">{{layoutGroup.layoutGroupTitle}}</span>
@@ -31,7 +31,7 @@
         </tab-heading>
 
         <tabset>
-            <tab ng-repeat="layout in layoutGroup.layouts">
+            <tab ng-repeat="layout in layoutGroup.layouts" active="layout.active">
                 <tab-heading>
                     <a ng-click="makeLayoutActive(layout)">
                         <span ng-dblclick="editTitle(layout, 'layout' + layout.id)" ng-show="!layout.editingTitle">{{layout.title}}</span>

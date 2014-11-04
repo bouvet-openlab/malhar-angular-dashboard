@@ -496,7 +496,25 @@ describe('Directive: grouped-layouts', function(){
 
         expect(childScope.getAllLayouts().map(function(l){return l.active})).toEqual([false, false, false, false, false, true, false, false]);
       });
-    })
+    });
+  });
+
+  describe('the removeLayout method', function(){
+    it('should call the remove and save methods of LayoutStorage', function() {
+      spyOn(GroupedStorage.prototype, 'removeLayout');
+      spyOn(GroupedStorage.prototype, 'save');
+
+      childScope.removeLayout(childScope.groups[0].layoutGroups[0].layouts[0]);
+      expect(GroupedStorage.prototype.removeLayout).toHaveBeenCalled();
+      expect(GroupedStorage.prototype.save).toHaveBeenCalled();
+    });
+
+    it('should call remove with the layout it was passed', function() {
+      spyOn(GroupedStorage.prototype, 'removeLayout');
+      var layout = childScope.groups[0].layoutGroups[0].layouts[0];
+      childScope.removeLayout(layout);
+      expect(GroupedStorage.prototype.removeLayout.calls.argsFor(0)[0]).toEqual(layout);
+    });
   });
 
   describe('the proxy methods to active layout', function() {

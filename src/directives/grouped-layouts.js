@@ -90,6 +90,11 @@ angular.module('ui.dashboard')
             return layout;
           };
 
+          scope.removeLayout = function(layout){
+            groupedStorage.removeLayout(layout);
+            groupedStorage.save();
+          };
+
           scope.makeLayoutActive = function (layout) {
             var current = groupedStorage.getActiveLayout();
 

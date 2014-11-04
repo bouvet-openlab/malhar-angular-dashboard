@@ -77,7 +77,11 @@ describe('GroupedStorage service', function () {
             groupTitle: 'Default group 3',
             layoutGroups: []
           }
-        ]
+        ],
+        states: {
+          "1": {content: 'text'},
+          "2": {content: 'something else'}
+        }
       },
       defaultLayouts: [],
       storageId: 'uniqueStorageId1',
@@ -1091,6 +1095,71 @@ describe('GroupedStorage service', function () {
     });
   });
 
+  describe('the removeLayout method', function() {
+
+    it('should remove the supplied layout', function() {
+      var layout = storage.groups[0].layoutGroups[0].layouts[1];
+      storage.removeLayout(layout);
+      expect(storage.groups[0].layoutGroups[0].layouts.indexOf(layout)).toEqual(-1);
+    });
+
+    it('should delete the state', function() {
+      var layout = storage.groups[0].layoutGroups[0].layouts[1];
+      storage.setItem(layout.id, {});
+      storage.removeLayout(layout);
+      expect(storage.states[layout.id]).toBeUndefined();
+    });
+
+    it('should do nothing if layout is not in layouts', function() {
+      var layout = {};
+      var before = storage.groups[0].layoutGroups[0].layouts.length;
+      storage.removeLayout(layout);
+      var after = storage.groups[0].layoutGroups[0].layouts.length;
+      expect(before).toEqual(after);
+    });
+
+    it('should set another dashboard to active if the layout removed was active', function() {
+      storage = new GroupedStorage(options);
+
+      spyOn(GroupedStorage.prototype, '_ensureActiveLayout').and.callThrough();;
+      var layout = storage.groups[0].layoutGroups[0].layouts[1];
+      storage.removeLayout(layout);
+      expect(storage.groups[0].layoutGroups[0].layouts[1]).toBeUndefined();
+      expect(storage.groups[0].layoutGroups[0].layouts[0].active).toEqual(true);
+
+      expect(GroupedStorage.prototype._ensureActiveLayout).toHaveBeenCalled();
+    });
+
+    it('should set the layout at index 0 to active if the removed layout was 0', function() {
+      storage = new GroupedStorage(options);
+
+      storage.groups[0].layoutGroups[0].layouts[1].active = false;
+      storage.groups[0].layoutGroups[0].layouts[0].active = true;
+      storage.removeLayout(storage.groups[0].layoutGroups[0].layouts[0]);
+      expect(storage.groups[0].layoutGroups[0].layouts[0].active).toEqual(true);
+    });
+
+    it('should not change the active layout if it was not the one that got removed', function() {
+      storage = new GroupedStorage(options);
+
+      var active = storage.groups[0].layoutGroups[0].layouts[1];
+      var layout = storage.groups[0].layoutGroups[0].layouts[0];
+      storage.removeLayout(layout);
+      expect(active.active).toEqual(true);
+    });
+
+    it('should set previous to active when active is not first or second', function(){
+      options.defaultGroupLayouts.groups[0].layoutGroups[0].layouts[0].active = false;
+      options.defaultGroupLayouts.groups[0].layoutGroups[0].layouts[1].active = false;
+      options.defaultGroupLayouts.groups[0].layoutGroups[0].layouts.push({title: 'newTitle', id: 3, active: true});
+
+      storage = new GroupedStorage(options);
+      storage.removeLayout(storage.groups[0].layoutGroups[0].layouts[2]);
+      expect(storage.groups[0].layoutGroups[0].layouts[0].active).toEqual(false);
+      expect(storage.groups[0].layoutGroups[0].layouts[1].active).toEqual(true);
+    })
+  });
+
   describe('the save method', function () {
 
     it('should call options.storage.setItem with a stringified object', function () {
@@ -1175,5 +1244,4 @@ describe('GroupedStorage service', function () {
     });
 
   });
-})
-;
+});
