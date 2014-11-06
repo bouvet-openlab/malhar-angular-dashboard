@@ -72,6 +72,10 @@ angular.module('ui.dashboard')
         },
 
         getActiveLayout: function () {
+          if (this.homeLayout && this.homeLayout.active) {
+            return this.homeLayout;
+          }
+
           for (var i = 0; i < this.groups.length; i++) {
             var group = this.groups[i];
             for (var j = 0; j < group.layoutGroups.length; j++) {
@@ -174,6 +178,8 @@ angular.module('ui.dashboard')
         },
 
         addHomeLayout: function (homeLayout) {
+          //console.log(homeLayout);
+
           if (!this.homeLayout && homeLayout) {
             homeLayout.dashboard = homeLayout.dashboard || {};
             homeLayout.dashboard.storage = this;
@@ -184,6 +190,13 @@ angular.module('ui.dashboard')
             homeLayout.dashboard.widgetButtons = this.widgetButtons;
             homeLayout.dashboard.explicitSave = this.explicitSave;
             this.homeLayout = homeLayout;
+          }
+        },
+
+        removeHomeLayout: function () {
+          if (this.homeLayout) {
+            delete this.states[this.homeLayout.id];
+            delete this.homeLayout;
           }
         },
 
@@ -243,11 +256,10 @@ angular.module('ui.dashboard')
         },
 
         save: function () {
-          var state = {
-            groups: this._serializeGroups(),
-            states: this.states,
-            storageHash: this.storageHash
-          };
+          var state = this._serializeGroups();
+
+          state.states = this.states;
+          state.storageHash = this.storageHash;
 
           if (this.stringifyStorage) {
             state = JSON.stringify(state);
@@ -287,7 +299,17 @@ angular.module('ui.dashboard')
         },
 
         _serializeGroups: function () {
-          var result = [];
+          var result = {groups: [], homeLayout: undefined};
+
+          if (this.homeLayout) {
+            result.homeLayout = {
+              id: this.homeLayout.id,
+              title: this.homeLayout.title,
+              active: this.homeLayout.active,
+              locked: this.homeLayout.locked,
+              defaultWidgets: this.homeLayout.dashboard.defaultWidgets
+            };
+          }
 
           angular.forEach(this.groups, function (g) {
             var group = {
@@ -318,7 +340,7 @@ angular.module('ui.dashboard')
               group.layoutGroups.push(layoutGroup);
             });
 
-            result.push(group);
+            result.groups.push(group);
           });
 
           return result;
@@ -369,7 +391,7 @@ angular.module('ui.dashboard')
           var foundLayout = false;
           var foundLayoutGroup = false;
 
-          if (this.homeLayout && this.homeLayout.active){
+          if (this.homeLayout && this.homeLayout.active) {
             foundLayout = true;
             foundLayoutGroup = true;
           }
@@ -409,7 +431,7 @@ angular.module('ui.dashboard')
             return;
           }
 
-          if(this.homeLayout){
+          if (this.homeLayout) {
             this.homeLayout.active = true;
           } else if (this.groups[0]) {
             if (this.groups[0].layoutGroups[0]) {
@@ -457,7 +479,7 @@ angular.module('ui.dashboard')
 
           var max = 0;
 
-          if(this.homeLayout){
+          if (this.homeLayout) {
             max = Math.max(max, this.homeLayout.id * 1);
           }
 

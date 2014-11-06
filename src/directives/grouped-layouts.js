@@ -19,14 +19,22 @@ angular.module('ui.dashboard')
 
           scope.groups = groupedStorage.groups;
 
-          scope.homeLayout = groupedStorage.homeLayout;
+          scope.bindHomeLayout = function(){
+            scope.homeLayout = groupedStorage.homeLayout;
+          };
 
-          scope.getAllLayouts = function() {
+          scope.bindHomeLayout();
+
+          scope.getAllLayouts = function () {
             var layouts = [];
 
-            angular.forEach(scope.groups, function(group){
-              angular.forEach(group.layoutGroups, function(layoutGroup){
-                angular.forEach(layoutGroup.layouts, function(layout){
+            if (scope.homeLayout) {
+              layouts.push(scope.homeLayout);
+            }
+
+            angular.forEach(scope.groups, function (group) {
+              angular.forEach(group.layoutGroups, function (layoutGroup) {
+                angular.forEach(layoutGroup.layouts, function (layout) {
                   layouts.push(layout);
                 });
               });
@@ -90,9 +98,29 @@ angular.module('ui.dashboard')
             return layout;
           };
 
-          scope.removeLayout = function(layout){
+          scope.removeLayout = function (layout) {
             groupedStorage.removeLayout(layout);
             groupedStorage.save();
+          };
+
+          scope.createHomeLayout = function(){
+            var layout = {title: 'Home', active: true};
+
+            groupedStorage.addHomeLayout(layout);
+            groupedStorage.save();
+
+            scope.bindHomeLayout();
+
+            scope._makeLayoutActive(layout);
+
+            return layout;
+          };
+
+          scope.removeHomeLayout = function(){
+            groupedStorage.removeHomeLayout();
+            groupedStorage.save();
+
+            scope.bindHomeLayout();
           };
 
           scope.makeLayoutActive = function (layout) {
@@ -111,11 +139,11 @@ angular.module('ui.dashboard')
 
               // Set resolve and reject callbacks for the result promise
               modalInstance.result.then(
-                function() {
+                function () {
                   current.dashboard.saveDashboard();
                   scope._makeLayoutActive(layout);
                 },
-                function() {
+                function () {
                   scope._makeLayoutActive(layout);
                 }
               );
@@ -125,7 +153,7 @@ angular.module('ui.dashboard')
           };
 
           scope._makeLayoutActive = function (layout) {
-            angular.forEach(scope.getAllLayouts(), function(l) {
+            angular.forEach(scope.getAllLayouts(), function (l) {
               if (l !== layout) {
                 l.active = false;
               } else {
@@ -136,21 +164,21 @@ angular.module('ui.dashboard')
             groupedStorage.save();
           };
 
-          scope.options.addWidget = function() {
+          scope.options.addWidget = function () {
             var layout = groupedStorage.getActiveLayout();
             if (layout) {
               layout.dashboard.addWidget.apply(layout.dashboard, arguments);
             }
           };
 
-          scope.options.loadWidgets = function(){
+          scope.options.loadWidgets = function () {
             var layout = groupedStorage.getActiveLayout();
             if (layout) {
               layout.dashboard.loadWidgets.apply(layout.dashboard, arguments);
             }
           };
 
-          scope.options.saveDashboard = function() {
+          scope.options.saveDashboard = function () {
             var layout = groupedStorage.getActiveLayout();
             if (layout) {
               layout.dashboard.saveDashboard.apply(layout.dashboard, arguments);

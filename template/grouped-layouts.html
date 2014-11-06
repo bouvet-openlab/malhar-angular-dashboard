@@ -1,4 +1,30 @@
 <tabset ui-sortable="sortableOptions" ng-model="groups">
+    <tab ng-if="homeLayout" active="homeLayout.active">
+        <tab-heading>
+            <tab-heading>
+                <a ng-click="makeLayoutActive(homeLayout)">
+                    <span ng-dblclick="editTitle(homeLayout, 'layout' + homeLayout.id)" ng-show="!homeLayout.editingTitle">{{homeLayout.title}}</span>
+
+                    <form action="" class="layout-title" ng-show="homeLayout.editingTitle"
+                          ng-submit="saveTitleEdit(homeLayout)">
+                        <input type="text" ng-model="homeLayout.title" class="form-control" name="layout{{homeLayout.id}}"
+                               data-layout="{{homeLayout.layout}}">
+                    </form>
+                        <span ng-if="!homeLayout.locked" ng-click="removeHomeLayout()"
+                              class="glyphicon glyphicon-remove remove-layout-icon"></span>
+                </a>
+            </tab-heading>
+        </tab-heading>
+    </tab>
+
+    <tab ng-if="!homeLayout">
+        <tab-heading class="ui-sortable-handle">
+            <a ng-click="createHomeLayout()">
+                <span class="glyphicon glyphicon-plus"></span> Home Layout
+            </a>
+        </tab-heading>
+    </tab>
+
     <tab ng-repeat-start="group in groups" disabled="true"
          style="border-left: 1px solid #ddd; border-top: 1px solid #ddd; border-radius: 4px 4px 0 0">
 

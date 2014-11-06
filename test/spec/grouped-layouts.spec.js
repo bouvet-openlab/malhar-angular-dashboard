@@ -115,41 +115,43 @@ describe('Directive: grouped-layouts', function(){
     childScope = element.scope();
   }));
 
-  it('Exists - Ice breaker', function(){
-    expect(childScope).toBeDefined();
-  });
+  describe('initialization', function(){
 
-  it('should not require storage', inject(function ($compile) {
-    delete $rootScope.dashboardOptions.storage;
-    expect(function () {
-      var noStorageEl = $compile('<div grouped-layouts="dashboardOptions"></div>')($rootScope);
+    it('Exists - Ice breaker', function(){
+      expect(childScope).toBeDefined();
+    });
+
+    it('should not require storage', inject(function ($compile) {
+      delete $rootScope.dashboardOptions.storage;
+      expect(function () {
+        var noStorageEl = $compile('<div grouped-layouts="dashboardOptions"></div>')($rootScope);
+        $rootScope.$digest();
+      }).not.toThrow();
+    }));
+
+    it('should be able to use a different grouped-layouts template', inject(function ($compile, $templateCache) {
+      $templateCache.put(
+        'myCustomGroupedLayoutsTemplate.html', '<div class="custom-class"></div>'
+      );
+      var customElement = $compile('<div grouped-layouts="dashboardOptions" template-url="myCustomGroupedLayoutsTemplate.html"></div>')($rootScope);
       $rootScope.$digest();
-    }).not.toThrow();
-  }));
 
-  it('should be able to use a different grouped-layouts template', inject(function ($compile, $templateCache) {
-    $templateCache.put(
-      'myCustomGroupedLayoutsTemplate.html', '<div class="custom-class"></div>'
-    );
-    var customElement = $compile('<div grouped-layouts="dashboardOptions" template-url="myCustomGroupedLayoutsTemplate.html"></div>')($rootScope);
-    $rootScope.$digest();
+      expect(customElement.find('div.custom-class').length).toEqual(1, 'Should contain div with class custom-class');
+    }));
 
-    expect(customElement.find('div.custom-class').length).toEqual(1, 'Should contain div with class custom-class');
-  }));
+    it('should initialize scope variables', inject(function($compile){
+      spyOn(GroupedStorage.prototype, 'getActiveLayout').and.callThrough();
 
-  it('should initialize scope variables', inject(function($compile){
-    spyOn(GroupedStorage.prototype, 'getActiveLayout').and.callThrough();
+      element = $compile('<div grouped-layouts="dashboardOptions"></div>')($rootScope);
+      $rootScope.$digest();
 
-    element = $compile('<div grouped-layouts="dashboardOptions"></div>')($rootScope);
-    $rootScope.$digest();
+      expect(childScope.options).toBe(options);
 
-    expect(childScope.options).toBe(options);
+      expect(options.defaultGroupLayouts.groups.length).toBe(childScope.groups.length);
+      expect(childScope.homeLayout).toBe(options.defaultGroupLayouts.homeLayout);
+    }));
 
-    expect(options.defaultGroupLayouts.groups.length).toBe(childScope.groups.length);
-    expect(childScope.homeLayout).toBe(options.defaultGroupLayouts.homeLayout);
-  }));
-
-  // TODO: Should set an active dashboard
+  });
 
   describe('the editTitle method', function(){
     it('should set the editingTitle attribute to true on the object it is passed', function() {
@@ -161,7 +163,7 @@ describe('Directive: grouped-layouts', function(){
     });
   });
 
-  describe(' the saveTitleEdit method', function(){
+  describe('the saveTitleEdit method', function(){
     it('should set editingTitle to false', function() {
       var group = { id: '1', editingTitle: true };
       childScope.saveTitleEdit(group);
@@ -309,7 +311,7 @@ describe('Directive: grouped-layouts', function(){
   });
 
   describe('the createLayout method', function(){
-    it('should call the add and save methods of LayoutStorage', function() {
+    it('should call the addLayout and save methods of GroupedStorage', function() {
       spyOn(GroupedStorage.prototype, 'addLayout');
       spyOn(GroupedStorage.prototype, 'save');
 
@@ -353,13 +355,194 @@ describe('Directive: grouped-layouts', function(){
     });
   });
 
+  describe('the removeLayout method', function(){
+    it('should call the removeLayout and save methods of GroupedStorage', function() {
+      spyOn(GroupedStorage.prototype, 'removeLayout');
+      spyOn(GroupedStorage.prototype, 'save');
+
+      childScope.removeLayout(childScope.groups[0].layoutGroups[0].layouts[0]);
+      expect(GroupedStorage.prototype.removeLayout).toHaveBeenCalled();
+      expect(GroupedStorage.prototype.save).toHaveBeenCalled();
+    });
+
+    it('should call remove with the layout it was passed', function() {
+      spyOn(GroupedStorage.prototype, 'removeLayout');
+      var layout = childScope.groups[0].layoutGroups[0].layouts[0];
+      childScope.removeLayout(layout);
+      expect(GroupedStorage.prototype.removeLayout.calls.argsFor(0)[0]).toEqual(layout);
+    });
+  });
+
+  describe('the createHomeLayout method', function(){
+    beforeEach(inject(function($compile){
+
+      $rootScope.dashboardOptions.defaultGroupLayouts.homeLayout = undefined;
+
+      element = $compile('<div grouped-layouts="dashboardOptions"></div>')($rootScope);
+      $rootScope.$digest();
+      childScope = element.scope();
+    }));
+
+    it('should call the addHomeLayout and save methods of GroupedStorage', function() {
+      spyOn(GroupedStorage.prototype, 'addHomeLayout');
+      spyOn(GroupedStorage.prototype, 'save');
+
+      childScope.createHomeLayout();
+      expect(GroupedStorage.prototype.addHomeLayout).toHaveBeenCalled();
+      expect(GroupedStorage.prototype.save).toHaveBeenCalled();
+    });
+
+    it('should return the newly created layout object', function() {
+      var result = childScope.createHomeLayout();
+      expect(typeof result).toEqual('object');
+
+      expect(result.id > 0).toBe(true);
+      expect(result.title).toBe('Home');
+      expect(result.dashboard).toBeDefined();
+    });
+
+    it('homeLayout should be set after create', function(){
+      spyOn(childScope, 'bindHomeLayout').and.callThrough();
+      expect(childScope.homeLayout).toBeUndefined();
+
+      var result = childScope.createHomeLayout();
+
+      expect(childScope.bindHomeLayout).toHaveBeenCalled();
+      expect(childScope.homeLayout).toBe(result);
+    });
+
+    it('should set active=true on the newly created layout and pass to _makeLayoutActive', function() {
+      spyOn(childScope, '_makeLayoutActive');
+
+      var result = childScope.createHomeLayout();
+      expect(result.active).toEqual(true);
+
+      expect(childScope._makeLayoutActive).toHaveBeenCalledWith(result);
+    });
+  });
+
+  describe('the removeHomeLayout method', function(){
+    it('should call the removeHomeLayout and save methods of GroupedStorage', function(){
+      spyOn(GroupedStorage.prototype, 'removeHomeLayout');
+      spyOn(GroupedStorage.prototype, 'save');
+
+      childScope.removeHomeLayout();
+      expect(GroupedStorage.prototype.removeHomeLayout).toHaveBeenCalled();
+      expect(GroupedStorage.prototype.save).toHaveBeenCalled();
+    });
+
+    it('should no longer contain homeLayout after removal', function(){
+      spyOn(childScope, 'bindHomeLayout').and.callThrough();
+
+      childScope.removeHomeLayout();
+      expect(childScope.bindHomeLayout).toHaveBeenCalled();
+
+      expect(childScope.homeLayout).toBeUndefined();
+    });
+  });
+
+  describe('the getAllLayouts method', function(){
+
+    it('should include all layouts from homeLayout, groups and layout groups', function(){
+      var homeLayout = {id: 1, title: 'start'};
+      var firstGroupLayout1 = {id: 2, title: 'first 1'};
+      var firstGroupLayout2 = {id: 3, title: 'first 2'};
+      var secondGroupLayout1 = {id: 4, title: 'second 1'}
+
+      childScope.groups = [{id: 1, layoutGroups: [{id: 1, layouts: [firstGroupLayout1, firstGroupLayout2]}, {id: 2, layouts: [secondGroupLayout1]}]}];
+      childScope.homeLayout = homeLayout;
+
+      var result = childScope.getAllLayouts();
+
+      expect(result.length).toBe(4);
+      expect(result.indexOf(homeLayout) >= 0).toBe(true);
+      expect(result.indexOf(firstGroupLayout1) >= 0).toBe(true);
+      expect(result.indexOf(firstGroupLayout2) >= 0).toBe(true);
+      expect(result.indexOf(secondGroupLayout1) >= 0).toBe(true);
+    });
+
+    it('should ignore homeLayout if not set', function(){
+      var firstGroupLayout1 = {id: 2, title: 'first 1'};
+      var firstGroupLayout2 = {id: 3, title: 'first 2'};
+      var secondGroupLayout1 = {id: 4, title: 'second 1'}
+
+      childScope.groups = [{id: 1, layoutGroups: [{id: 1, layouts: [firstGroupLayout1, firstGroupLayout2]}, {id: 2, layouts: [secondGroupLayout1]}]}];
+      childScope.homeLayout = undefined;
+
+      var result = childScope.getAllLayouts();
+
+      expect(result.length).toBe(3);
+      expect(result.indexOf(firstGroupLayout1) >= 0).toBe(true);
+      expect(result.indexOf(firstGroupLayout2) >= 0).toBe(true);
+      expect(result.indexOf(secondGroupLayout1) >= 0).toBe(true);
+    });
+
+    it('should be empty array if no layouts exists', function(){
+      childScope.groups = [];
+      childScope.homeLayout = undefined;
+
+      var result = childScope.getAllLayouts();
+
+      expect(angular.isArray(result)).toBe(true);
+      expect(result.length).toBe(0);
+    });
+
+    it('should change if groups changes', function(){
+      childScope.groups = [];
+      childScope.homeLayout = undefined;
+
+      var initial = childScope.getAllLayouts();
+
+      expect(angular.isArray(initial)).toBe(true);
+      expect(initial.length).toBe(0);
+
+      var firstGroupLayout1 = {id: 2, title: 'first 1'};
+      var firstGroupLayout2 = {id: 3, title: 'first 2'};
+      var secondGroupLayout1 = {id: 4, title: 'second 1'}
+
+      childScope.groups = [{id: 1, layoutGroups: [{id: 1, layouts: [firstGroupLayout1, firstGroupLayout2]}, {id: 2, layouts: [secondGroupLayout1]}]}];
+
+      var result = childScope.getAllLayouts();
+
+      expect(result.length).toBe(3);
+      expect(result.indexOf(firstGroupLayout1) >= 0).toBe(true);
+      expect(result.indexOf(firstGroupLayout2) >= 0).toBe(true);
+      expect(result.indexOf(secondGroupLayout1) >= 0).toBe(true);
+    });
+
+    it('should change if homeLayout are added', function(){
+      childScope.groups = [];
+      childScope.homeLayout = undefined;
+
+      var initial = childScope.getAllLayouts();
+
+      expect(angular.isArray(initial)).toBe(true);
+      expect(initial.length).toBe(0);
+
+      var homeLayout = {id: 1, title: 'start'};
+      childScope.homeLayout = homeLayout;
+
+      var result = childScope.getAllLayouts();
+
+      expect(result.length).toBe(1);
+      expect(result.indexOf(homeLayout) >= 0).toBe(true);
+    });
+  });
+
   describe('the makeLayoutActive method', function(){
 
     it('should call _makeLayoutActive if there is not a currently active dashboard with unsaved changes', function() {
       spyOn(childScope, '_makeLayoutActive');
       var layout = childScope.groups[0].layoutGroups[0].layouts[1];
       childScope.makeLayoutActive(layout);
-      expect(childScope._makeLayoutActive).toHaveBeenCalled();
+      expect(childScope._makeLayoutActive).toHaveBeenCalledWith(layout);
+    });
+
+    it('should call _makeLayoutActive with homeLayout when activating home layout', function(){
+      spyOn(childScope, '_makeLayoutActive');
+      var layout = childScope.homeLayout;
+      childScope.makeLayoutActive(layout);
+      expect(childScope._makeLayoutActive).toHaveBeenCalledWith(layout);
     });
 
     describe('when there are unsaved changes on the current dashboard', function() {
@@ -448,22 +631,21 @@ describe('Directive: grouped-layouts', function(){
                 ]
               },
               {
-                active: false,
+                active: true,
                 layouts: [
                   {active: false},
-                  {active: false}
+                  {active: true, id: 8}
                 ]
               }
             ]
           }
         ];
         options.defaultGroupLayouts.groups = groups;
+        options.defaultGroupLayouts.homeLayout = {active: false, id: 9};
 
         element = $compile('<div grouped-layouts="dashboardOptions"></div>')($rootScope);
         $rootScope.$digest();
         childScope = element.scope();
-
-        //childScope.groups = groups;
       }));
 
       it('should call _ensureActiveLayout and save on groupedStorage', function(){
@@ -471,6 +653,16 @@ describe('Directive: grouped-layouts', function(){
         spyOn(GroupedStorage.prototype, 'save').and.callThrough();
 
         childScope._makeLayoutActive(childScope.groups[0].layoutGroups[0].layouts[1]);
+
+        expect(GroupedStorage.prototype._ensureActiveLayout).toHaveBeenCalled();
+        expect(GroupedStorage.prototype.save).toHaveBeenCalled();
+      });
+
+      it('should call _ensureActiveLayout and save on groupedStorage also for homeLayout', function(){
+        spyOn(GroupedStorage.prototype, '_ensureActiveLayout').and.callThrough();
+        spyOn(GroupedStorage.prototype, 'save').and.callThrough();
+
+        childScope._makeLayoutActive(childScope.homeLayout);
 
         expect(GroupedStorage.prototype._ensureActiveLayout).toHaveBeenCalled();
         expect(GroupedStorage.prototype.save).toHaveBeenCalled();
@@ -500,26 +692,37 @@ describe('Directive: grouped-layouts', function(){
         expect(childScope.groups[1].layoutGroups[1].layouts[0].active).toBe(false);
         expect(childScope.groups[1].layoutGroups[1].layouts[1].active).toBe(false);
 
-        expect(childScope.getAllLayouts().map(function(l){return l.active})).toEqual([false, false, false, false, false, true, false, false]);
+        expect(childScope.getAllLayouts().map(function(l){return l.active})).toEqual([false, false, false, false, false, false, true, false, false]);
       });
-    });
-  });
 
-  describe('the removeLayout method', function(){
-    it('should call the remove and save methods of LayoutStorage', function() {
-      spyOn(GroupedStorage.prototype, 'removeLayout');
-      spyOn(GroupedStorage.prototype, 'save');
+      it('should set homeLayout as only active when invoking _makeLayoutActive with homeLayout', function(){
 
-      childScope.removeLayout(childScope.groups[0].layoutGroups[0].layouts[0]);
-      expect(GroupedStorage.prototype.removeLayout).toHaveBeenCalled();
-      expect(GroupedStorage.prototype.save).toHaveBeenCalled();
-    });
+        var layout = childScope.homeLayout;
 
-    it('should call remove with the layout it was passed', function() {
-      spyOn(GroupedStorage.prototype, 'removeLayout');
-      var layout = childScope.groups[0].layoutGroups[0].layouts[0];
-      childScope.removeLayout(layout);
-      expect(GroupedStorage.prototype.removeLayout.calls.argsFor(0)[0]).toEqual(layout);
+        expect(childScope.homeLayout.active).toBe(false);
+
+        childScope._makeLayoutActive(layout);
+
+        expect(childScope.homeLayout.active).toBe(true);
+
+        expect(childScope.groups[0].layoutGroups[0].active).toBe(false);
+        expect(childScope.groups[0].layoutGroups[0].layouts[0].active).toBe(false);
+        expect(childScope.groups[0].layoutGroups[0].layouts[1].active).toBe(false);
+
+        expect(childScope.groups[0].layoutGroups[1].active).toBe(false);
+        expect(childScope.groups[0].layoutGroups[1].layouts[0].active).toBe(false);
+        expect(childScope.groups[0].layoutGroups[1].layouts[1].active).toBe(false);
+
+        expect(childScope.groups[1].layoutGroups[0].active).toBe(false);
+        expect(childScope.groups[1].layoutGroups[0].layouts[0].active).toBe(false);
+        expect(childScope.groups[1].layoutGroups[0].layouts[1].active).toBe(false);
+
+        expect(childScope.groups[1].layoutGroups[1].active).toBe(false);
+        expect(childScope.groups[1].layoutGroups[1].layouts[0].active).toBe(false);
+        expect(childScope.groups[1].layoutGroups[1].layouts[1].active).toBe(false);
+
+        expect(childScope.getAllLayouts().map(function(l){return l.active})).toEqual([true, false, false, false, false, false, false, false, false]);
+      });
     });
   });
 

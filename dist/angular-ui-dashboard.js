@@ -466,14 +466,22 @@ angular.module('ui.dashboard')
 
           scope.groups = groupedStorage.groups;
 
-          scope.homeLayout = groupedStorage.homeLayout;
+          scope.bindHomeLayout = function(){
+            scope.homeLayout = groupedStorage.homeLayout;
+          };
 
-          scope.getAllLayouts = function() {
+          scope.bindHomeLayout();
+
+          scope.getAllLayouts = function () {
             var layouts = [];
 
-            angular.forEach(scope.groups, function(group){
-              angular.forEach(group.layoutGroups, function(layoutGroup){
-                angular.forEach(layoutGroup.layouts, function(layout){
+            if (scope.homeLayout) {
+              layouts.push(scope.homeLayout);
+            }
+
+            angular.forEach(scope.groups, function (group) {
+              angular.forEach(group.layoutGroups, function (layoutGroup) {
+                angular.forEach(layoutGroup.layouts, function (layout) {
                   layouts.push(layout);
                 });
               });
@@ -537,9 +545,29 @@ angular.module('ui.dashboard')
             return layout;
           };
 
-          scope.removeLayout = function(layout){
+          scope.removeLayout = function (layout) {
             groupedStorage.removeLayout(layout);
             groupedStorage.save();
+          };
+
+          scope.createHomeLayout = function(){
+            var layout = {title: 'Home', active: true};
+
+            groupedStorage.addHomeLayout(layout);
+            groupedStorage.save();
+
+            scope.bindHomeLayout();
+
+            scope._makeLayoutActive(layout);
+
+            return layout;
+          };
+
+          scope.removeHomeLayout = function(){
+            groupedStorage.removeHomeLayout();
+            groupedStorage.save();
+
+            scope.bindHomeLayout();
           };
 
           scope.makeLayoutActive = function (layout) {
@@ -558,11 +586,11 @@ angular.module('ui.dashboard')
 
               // Set resolve and reject callbacks for the result promise
               modalInstance.result.then(
-                function() {
+                function () {
                   current.dashboard.saveDashboard();
                   scope._makeLayoutActive(layout);
                 },
-                function() {
+                function () {
                   scope._makeLayoutActive(layout);
                 }
               );
@@ -572,7 +600,7 @@ angular.module('ui.dashboard')
           };
 
           scope._makeLayoutActive = function (layout) {
-            angular.forEach(scope.getAllLayouts(), function(l) {
+            angular.forEach(scope.getAllLayouts(), function (l) {
               if (l !== layout) {
                 l.active = false;
               } else {
@@ -583,21 +611,21 @@ angular.module('ui.dashboard')
             groupedStorage.save();
           };
 
-          scope.options.addWidget = function() {
+          scope.options.addWidget = function () {
             var layout = groupedStorage.getActiveLayout();
             if (layout) {
               layout.dashboard.addWidget.apply(layout.dashboard, arguments);
             }
           };
 
-          scope.options.loadWidgets = function(){
+          scope.options.loadWidgets = function () {
             var layout = groupedStorage.getActiveLayout();
             if (layout) {
               layout.dashboard.loadWidgets.apply(layout.dashboard, arguments);
             }
           };
 
-          scope.options.saveDashboard = function() {
+          scope.options.saveDashboard = function () {
             var layout = groupedStorage.getActiveLayout();
             if (layout) {
               layout.dashboard.saveDashboard.apply(layout.dashboard, arguments);
@@ -746,6 +774,10 @@ angular.module('ui.dashboard')
         },
 
         getActiveLayout: function () {
+          if (this.homeLayout && this.homeLayout.active) {
+            return this.homeLayout;
+          }
+
           for (var i = 0; i < this.groups.length; i++) {
             var group = this.groups[i];
             for (var j = 0; j < group.layoutGroups.length; j++) {
@@ -848,6 +880,8 @@ angular.module('ui.dashboard')
         },
 
         addHomeLayout: function (homeLayout) {
+          //console.log(homeLayout);
+
           if (!this.homeLayout && homeLayout) {
             homeLayout.dashboard = homeLayout.dashboard || {};
             homeLayout.dashboard.storage = this;
@@ -858,6 +892,13 @@ angular.module('ui.dashboard')
             homeLayout.dashboard.widgetButtons = this.widgetButtons;
             homeLayout.dashboard.explicitSave = this.explicitSave;
             this.homeLayout = homeLayout;
+          }
+        },
+
+        removeHomeLayout: function () {
+          if (this.homeLayout) {
+            delete this.states[this.homeLayout.id];
+            delete this.homeLayout;
           }
         },
 
@@ -917,11 +958,10 @@ angular.module('ui.dashboard')
         },
 
         save: function () {
-          var state = {
-            groups: this._serializeGroups(),
-            states: this.states,
-            storageHash: this.storageHash
-          };
+          var state = this._serializeGroups();
+
+          state.states = this.states;
+          state.storageHash = this.storageHash;
 
           if (this.stringifyStorage) {
             state = JSON.stringify(state);
@@ -961,7 +1001,17 @@ angular.module('ui.dashboard')
         },
 
         _serializeGroups: function () {
-          var result = [];
+          var result = {groups: [], homeLayout: undefined};
+
+          if (this.homeLayout) {
+            result.homeLayout = {
+              id: this.homeLayout.id,
+              title: this.homeLayout.title,
+              active: this.homeLayout.active,
+              locked: this.homeLayout.locked,
+              defaultWidgets: this.homeLayout.dashboard.defaultWidgets
+            };
+          }
 
           angular.forEach(this.groups, function (g) {
             var group = {
@@ -992,7 +1042,7 @@ angular.module('ui.dashboard')
               group.layoutGroups.push(layoutGroup);
             });
 
-            result.push(group);
+            result.groups.push(group);
           });
 
           return result;
@@ -1043,7 +1093,7 @@ angular.module('ui.dashboard')
           var foundLayout = false;
           var foundLayoutGroup = false;
 
-          if (this.homeLayout && this.homeLayout.active){
+          if (this.homeLayout && this.homeLayout.active) {
             foundLayout = true;
             foundLayoutGroup = true;
           }
@@ -1083,7 +1133,7 @@ angular.module('ui.dashboard')
             return;
           }
 
-          if(this.homeLayout){
+          if (this.homeLayout) {
             this.homeLayout.active = true;
           } else if (this.groups[0]) {
             if (this.groups[0].layoutGroups[0]) {
@@ -1131,7 +1181,7 @@ angular.module('ui.dashboard')
 
           var max = 0;
 
-          if(this.homeLayout){
+          if (this.homeLayout) {
             max = Math.max(max, this.homeLayout.id * 1);
           }
 
@@ -2351,6 +2401,58 @@ angular.module("ui.dashboard").run(["$templateCache", function($templateCache) {
 
   $templateCache.put("template/grouped-layouts.html",
     "<tabset ui-sortable=\"sortableOptions\" ng-model=\"groups\">\r" +
+    "\n" +
+    "    <tab ng-if=\"homeLayout\" active=\"homeLayout.active\">\r" +
+    "\n" +
+    "        <tab-heading>\r" +
+    "\n" +
+    "            <tab-heading>\r" +
+    "\n" +
+    "                <a ng-click=\"makeLayoutActive(homeLayout)\">\r" +
+    "\n" +
+    "                    <span ng-dblclick=\"editTitle(homeLayout, 'layout' + homeLayout.id)\" ng-show=\"!homeLayout.editingTitle\">{{homeLayout.title}}</span>\r" +
+    "\n" +
+    "\r" +
+    "\n" +
+    "                    <form action=\"\" class=\"layout-title\" ng-show=\"homeLayout.editingTitle\"\r" +
+    "\n" +
+    "                          ng-submit=\"saveTitleEdit(homeLayout)\">\r" +
+    "\n" +
+    "                        <input type=\"text\" ng-model=\"homeLayout.title\" class=\"form-control\" name=\"layout{{homeLayout.id}}\"\r" +
+    "\n" +
+    "                               data-layout=\"{{homeLayout.layout}}\">\r" +
+    "\n" +
+    "                    </form>\r" +
+    "\n" +
+    "                        <span ng-if=\"!homeLayout.locked\" ng-click=\"removeHomeLayout()\"\r" +
+    "\n" +
+    "                              class=\"glyphicon glyphicon-remove remove-layout-icon\"></span>\r" +
+    "\n" +
+    "                </a>\r" +
+    "\n" +
+    "            </tab-heading>\r" +
+    "\n" +
+    "        </tab-heading>\r" +
+    "\n" +
+    "    </tab>\r" +
+    "\n" +
+    "\r" +
+    "\n" +
+    "    <tab ng-if=\"!homeLayout\">\r" +
+    "\n" +
+    "        <tab-heading class=\"ui-sortable-handle\">\r" +
+    "\n" +
+    "            <a ng-click=\"createHomeLayout()\">\r" +
+    "\n" +
+    "                <span class=\"glyphicon glyphicon-plus\"></span> Home Layout\r" +
+    "\n" +
+    "            </a>\r" +
+    "\n" +
+    "        </tab-heading>\r" +
+    "\n" +
+    "    </tab>\r" +
+    "\n" +
+    "\r" +
     "\n" +
     "    <tab ng-repeat-start=\"group in groups\" disabled=\"true\"\r" +
     "\n" +
