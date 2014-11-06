@@ -11,6 +11,7 @@ angular.module('app').controller('GroupedLayoutsHomeDemoCtrl',
       widgetDefinitions: widgetDefinitions,
       defaultWidgets: defaultWidgets,
       lockDefaultLayouts: true,
+      explicitSave: true,
       defaultGroupLayouts: {
         home: {title: 'Start', id: 1},
         groups: [

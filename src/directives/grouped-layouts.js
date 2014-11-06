@@ -7,10 +7,13 @@
 angular.module('ui.dashboard')
   .directive('groupedLayouts', [
     'GroupedStorage', '$timeout', '$modal', function (GroupedStorage, $timeout, $modal) {
+
       return {
         scope: true,
         templateUrl: function (element, attr) {
-          return attr.templateUrl ? attr.templateUrl : 'template/grouped-layouts.html';
+          var defaultTemplate = attr.isReadonly === 'true' ? "template/grouped-layouts-readonly.html" : 'template/grouped-layouts.html';
+
+          return attr.templateUrl ? attr.templateUrl : defaultTemplate;
         },
         link: function (scope, element, attrs) {
           scope.options = scope.$eval(attrs.groupedLayouts);
@@ -18,8 +21,9 @@ angular.module('ui.dashboard')
           var groupedStorage = new GroupedStorage(scope.options);
 
           scope.groups = groupedStorage.groups;
+          scope.explicitSave = groupedStorage.explicitSave;
 
-          scope.bindHomeLayout = function(){
+          scope.bindHomeLayout = function () {
             scope.homeLayout = groupedStorage.homeLayout;
           };
 
@@ -103,7 +107,7 @@ angular.module('ui.dashboard')
             groupedStorage.save();
           };
 
-          scope.createHomeLayout = function(){
+          scope.createHomeLayout = function () {
             var layout = {title: 'Home', active: true};
 
             groupedStorage.addHomeLayout(layout);
@@ -116,11 +120,15 @@ angular.module('ui.dashboard')
             return layout;
           };
 
-          scope.removeHomeLayout = function(){
+          scope.removeHomeLayout = function () {
             groupedStorage.removeHomeLayout();
             groupedStorage.save();
 
             scope.bindHomeLayout();
+          };
+
+          scope.saveToStorage = function () {
+            groupedStorage.saveToStorage();
           };
 
           scope.makeLayoutActive = function (layout) {

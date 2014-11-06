@@ -54,6 +54,7 @@ describe('Directive: grouped-layouts', function(){
     GroupedStorage = _GroupedStorage_;
 
     $rootScope.dashboardOptions = options = {
+      explicitSave: false,
       defaultGroupLayouts: {
         homeLayout: {
           id: 4,
@@ -129,6 +130,17 @@ describe('Directive: grouped-layouts', function(){
       }).not.toThrow();
     }));
 
+    it('should be able compile template', function () {
+      expect(element.find('div#editableGroupedLayouts').length).toEqual(1, 'Should contain div with id editableGroupedLayouts');
+    });
+
+    it('should be able compile readonly template', inject(function ($compile) {
+      var customElement = $compile('<div grouped-layouts="dashboardOptions" is-readonly></div>')($rootScope);
+      $rootScope.$digest();
+
+      expect(customElement.find('div#readonlyGroupedLayouts').length).toEqual(1, 'Should contain div with id readonlyGroupedLayouts');
+    }));
+
     it('should be able to use a different grouped-layouts template', inject(function ($compile, $templateCache) {
       $templateCache.put(
         'myCustomGroupedLayoutsTemplate.html', '<div class="custom-class"></div>'
@@ -139,16 +151,22 @@ describe('Directive: grouped-layouts', function(){
       expect(customElement.find('div.custom-class').length).toEqual(1, 'Should contain div with class custom-class');
     }));
 
+//    it()
+
     it('should initialize scope variables', inject(function($compile){
+      //$rootScope.dashboardOptions.explicitSave = true;
+      options.explicitSave = true;
       spyOn(GroupedStorage.prototype, 'getActiveLayout').and.callThrough();
 
       element = $compile('<div grouped-layouts="dashboardOptions"></div>')($rootScope);
       $rootScope.$digest();
+      childScope = element.scope();
 
       expect(childScope.options).toBe(options);
 
       expect(options.defaultGroupLayouts.groups.length).toBe(childScope.groups.length);
       expect(childScope.homeLayout).toBe(options.defaultGroupLayouts.homeLayout);
+      expect(childScope.explicitSave).toBe(true);
     }));
 
   });
@@ -170,7 +188,7 @@ describe('Directive: grouped-layouts', function(){
       expect(group.editingTitle).toEqual(false);
     });
 
-    it('should call layoutStorage.save', function() {
+    it('should call groupedStorage.save', function() {
       var group = { id: '1' };
       spyOn(GroupedStorage.prototype, 'save').and.callThrough();
       childScope.saveTitleEdit(group);
@@ -797,5 +815,14 @@ describe('Directive: grouped-layouts', function(){
 
     });
 
+  });
+
+  describe('the saveToStorage method', function(){
+    it('should call groupedStorage.saveToStorage', function() {
+      var group = { id: '1' };
+      spyOn(GroupedStorage.prototype, 'saveToStorage').and.callThrough();
+      childScope.saveToStorage();
+      expect(GroupedStorage.prototype.saveToStorage).toHaveBeenCalled();
+    });
   });
 });

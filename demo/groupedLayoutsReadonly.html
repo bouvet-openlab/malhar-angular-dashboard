@@ -1,0 +1,6 @@
+{{readonly}}
+
+        <button ng-click="toggle(!readonly)">Toggle</button>
+
+<div grouped-layouts="groupOptions" is-readonly="true" ng-if="readonly"></div>
+<div grouped-layouts="groupOptions" is-readonly="false" ng-if="!readonly"></div>

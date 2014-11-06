@@ -454,10 +454,13 @@ angular.module('ui.dashboard')
 angular.module('ui.dashboard')
   .directive('groupedLayouts', [
     'GroupedStorage', '$timeout', '$modal', function (GroupedStorage, $timeout, $modal) {
+
       return {
         scope: true,
         templateUrl: function (element, attr) {
-          return attr.templateUrl ? attr.templateUrl : 'template/grouped-layouts.html';
+          var defaultTemplate = attr.isReadonly === 'true' ? "template/grouped-layouts-readonly.html" : 'template/grouped-layouts.html';
+
+          return attr.templateUrl ? attr.templateUrl : defaultTemplate;
         },
         link: function (scope, element, attrs) {
           scope.options = scope.$eval(attrs.groupedLayouts);
@@ -465,8 +468,9 @@ angular.module('ui.dashboard')
           var groupedStorage = new GroupedStorage(scope.options);
 
           scope.groups = groupedStorage.groups;
+          scope.explicitSave = groupedStorage.explicitSave;
 
-          scope.bindHomeLayout = function(){
+          scope.bindHomeLayout = function () {
             scope.homeLayout = groupedStorage.homeLayout;
           };
 
@@ -550,7 +554,7 @@ angular.module('ui.dashboard')
             groupedStorage.save();
           };
 
-          scope.createHomeLayout = function(){
+          scope.createHomeLayout = function () {
             var layout = {title: 'Home', active: true};
 
             groupedStorage.addHomeLayout(layout);
@@ -563,11 +567,15 @@ angular.module('ui.dashboard')
             return layout;
           };
 
-          scope.removeHomeLayout = function(){
+          scope.removeHomeLayout = function () {
             groupedStorage.removeHomeLayout();
             groupedStorage.save();
 
             scope.bindHomeLayout();
+          };
+
+          scope.saveToStorage = function () {
+            groupedStorage.saveToStorage();
           };
 
           scope.makeLayoutActive = function (layout) {
@@ -958,6 +966,14 @@ angular.module('ui.dashboard')
         },
 
         save: function () {
+          this.options.unsavedChangeCount++;
+
+          if (!this.explicitSave) {
+            this.saveToStorage();
+          }
+        },
+
+        saveToStorage: function () {
           var state = this._serializeGroups();
 
           state.states = this.states;
@@ -968,6 +984,7 @@ angular.module('ui.dashboard')
           }
 
           this.storage.setItem(this.id, state);
+          this.options.unsavedChangeCount = 0;
         },
 
         clear: function () {
@@ -2399,8 +2416,94 @@ angular.module("ui.dashboard").run(["$templateCache", function($templateCache) {
     "</div>"
   );
 
+  $templateCache.put("template/grouped-layouts-readonly.html",
+    "<tabset ui-sortable=\"sortableOptions\" ng-model=\"groups\" id=\"readonlyGroupedLayouts\">\r" +
+    "\n" +
+    "    <tab ng-if=\"homeLayout\" active=\"homeLayout.active\">\r" +
+    "\n" +
+    "        <tab-heading>\r" +
+    "\n" +
+    "            <tab-heading>\r" +
+    "\n" +
+    "                <a ng-click=\"makeLayoutActive(homeLayout)\">\r" +
+    "\n" +
+    "                    <span>{{homeLayout.title}}</span>\r" +
+    "\n" +
+    "                </a>\r" +
+    "\n" +
+    "            </tab-heading>\r" +
+    "\n" +
+    "        </tab-heading>\r" +
+    "\n" +
+    "    </tab>\r" +
+    "\n" +
+    "\r" +
+    "\n" +
+    "    <tab ng-repeat-start=\"group in groups\" disabled=\"true\"\r" +
+    "\n" +
+    "         style=\"border-left: 1px solid #ddd; border-top: 1px solid #ddd; border-radius: 4px 4px 0 0\">\r" +
+    "\n" +
+    "\r" +
+    "\n" +
+    "        <tab-heading>\r" +
+    "\n" +
+    "            <span>{{group.groupTitle}}</span>\r" +
+    "\n" +
+    "        </tab-heading>\r" +
+    "\n" +
+    "\r" +
+    "\n" +
+    "    </tab>\r" +
+    "\n" +
+    "    <tab ng-repeat=\"layoutGroup in group.layoutGroups\" style=\"border-top: 1px solid #ddd\" active=\"layoutGroup.active\">\r" +
+    "\n" +
+    "        <tab-heading>\r" +
+    "\n" +
+    "            <span>{{layoutGroup.layoutGroupTitle}}</span>\r" +
+    "\n" +
+    "        </tab-heading>\r" +
+    "\n" +
+    "\r" +
+    "\n" +
+    "        <tabset>\r" +
+    "\n" +
+    "            <tab ng-repeat=\"layout in layoutGroup.layouts\" active=\"layout.active\">\r" +
+    "\n" +
+    "                <tab-heading>\r" +
+    "\n" +
+    "                    <a ng-click=\"makeLayoutActive(layout)\">\r" +
+    "\n" +
+    "                        <span>{{layout.title}}</span>\r" +
+    "\n" +
+    "                    </a>\r" +
+    "\n" +
+    "                </tab-heading>\r" +
+    "\n" +
+    "            </tab>\r" +
+    "\n" +
+    "        </tabset>\r" +
+    "\n" +
+    "    </tab>\r" +
+    "\n" +
+    "\r" +
+    "\n" +
+    "    <tab ng-repeat-end ng-if=\"false\">\r" +
+    "\n" +
+    "\r" +
+    "\n" +
+    "    </tab>\r" +
+    "\n" +
+    "</tabset>\r" +
+    "\n" +
+    "\r" +
+    "\n" +
+    "<div ng-repeat=\"layout in getAllLayouts() | filter:{active:true}\" dashboard=\"layout.dashboard\"\r" +
+    "\n" +
+    "     template-url=\"template/dashboard.html\"></div>"
+  );
+
   $templateCache.put("template/grouped-layouts.html",
-    "<tabset ui-sortable=\"sortableOptions\" ng-model=\"groups\">\r" +
+    "<tabset ui-sortable=\"sortableOptions\" ng-model=\"groups\" id=\"editableGroupedLayouts\">\r" +
     "\n" +
     "    <tab ng-if=\"homeLayout\" active=\"homeLayout.active\">\r" +
     "\n" +
@@ -2591,6 +2694,20 @@ angular.module("ui.dashboard").run(["$templateCache", function($templateCache) {
     "                <span class=\"glyphicon glyphicon-plus\"></span> Group\r" +
     "\n" +
     "            </a>\r" +
+    "\n" +
+    "        </tab-heading>\r" +
+    "\n" +
+    "    </tab>\r" +
+    "\n" +
+    "    <tab disabled=\"true\" ng-if=\"explicitSave\">\r" +
+    "\n" +
+    "        <tab-heading>\r" +
+    "\n" +
+    "            <button class=\"btn btn-success\" ng-class=\"{disabled: options.unsavedChangeCount === 0}\" ng-click=\"saveToStorage()\">\r" +
+    "\n" +
+    "                save ({{options.unsavedChangeCount}} changes)\r" +
+    "\n" +
+    "            </button>\r" +
     "\n" +
     "        </tab-heading>\r" +
     "\n" +

@@ -1,0 +1,42 @@
+<tabset ui-sortable="sortableOptions" ng-model="groups" id="readonlyGroupedLayouts">
+    <tab ng-if="homeLayout" active="homeLayout.active">
+        <tab-heading>
+            <tab-heading>
+                <a ng-click="makeLayoutActive(homeLayout)">
+                    <span>{{homeLayout.title}}</span>
+                </a>
+            </tab-heading>
+        </tab-heading>
+    </tab>
+
+    <tab ng-repeat-start="group in groups" disabled="true"
+         style="border-left: 1px solid #ddd; border-top: 1px solid #ddd; border-radius: 4px 4px 0 0">
+
+        <tab-heading>
+            <span>{{group.groupTitle}}</span>
+        </tab-heading>
+
+    </tab>
+    <tab ng-repeat="layoutGroup in group.layoutGroups" style="border-top: 1px solid #ddd" active="layoutGroup.active">
+        <tab-heading>
+            <span>{{layoutGroup.layoutGroupTitle}}</span>
+        </tab-heading>
+
+        <tabset>
+            <tab ng-repeat="layout in layoutGroup.layouts" active="layout.active">
+                <tab-heading>
+                    <a ng-click="makeLayoutActive(layout)">
+                        <span>{{layout.title}}</span>
+                    </a>
+                </tab-heading>
+            </tab>
+        </tabset>
+    </tab>
+
+    <tab ng-repeat-end ng-if="false">
+
+    </tab>
+</tabset>
+
+<div ng-repeat="layout in getAllLayouts() | filter:{active:true}" dashboard="layout.dashboard"
+     template-url="template/dashboard.html"></div>

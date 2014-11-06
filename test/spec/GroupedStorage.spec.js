@@ -1375,12 +1375,52 @@ describe('GroupedStorage service', function () {
     });
   });
 
-  describe('the save method', function () {
+  describe('the save method', function(){
+    it('should increment the unsaved change count', function(){
+      options.explicitSave = true;
+      storage = new GroupedStorage(options);
+      storage.options.unsavedChangeCount = 0;
+
+      storage.save();
+      expect(storage.options.unsavedChangeCount).toEqual(1);
+
+      storage.save();
+      storage.save();
+      storage.save();
+      expect(storage.options.unsavedChangeCount).toEqual(4);
+    });
+
+    it('should call saveToStorage if explicit save is false', function(){
+      options.explicitSave = false;
+      storage = new GroupedStorage(options);
+      spyOn(storage, 'saveToStorage').and.callThrough();
+
+      storage.options.unsavedChangeCount = 0;
+      storage.save();
+      expect(storage.options.unsavedChangeCount).toEqual(0);
+
+      expect(storage.saveToStorage).toHaveBeenCalled();
+    });
+
+    it('should not call saveToStorage if explicit save is true', function(){
+      options.explicitSave = true;
+      storage = new GroupedStorage(options);
+      spyOn(storage, 'saveToStorage').and.callThrough();
+
+      storage.options.unsavedChangeCount = 0;
+      storage.save();
+      expect(storage.options.unsavedChangeCount).toEqual(1);
+
+      expect(storage.saveToStorage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('the saveToStorage method', function () {
 
     it('should call options.storage.setItem with a stringified object', function () {
       storage = new GroupedStorage(options);
       spyOn(options.storage, 'setItem');
-      storage.save();
+      storage.saveToStorage();
       expect(options.storage.setItem).toHaveBeenCalled();
       expect(options.storage.setItem.calls.argsFor(0)[0]).toEqual(storage.id);
       expect(typeof options.storage.setItem.calls.argsFor(0)[1]).toEqual('string');
@@ -1392,7 +1432,7 @@ describe('GroupedStorage service', function () {
     it('should save an object that has groups, homeLayout, states, and storageHash', function () {
       spyOn(options.storage, 'setItem');
       storage = new GroupedStorage(options);
-      storage.save();
+      storage.saveToStorage();
 
       var obj = JSON.parse(options.storage.setItem.calls.argsFor(0)[1]);
       expect(obj.hasOwnProperty('groups')).toEqual(true);
@@ -1409,10 +1449,19 @@ describe('GroupedStorage service', function () {
       options.stringifyStorage = false;
       storage = new GroupedStorage(options);
       spyOn(options.storage, 'setItem');
-      storage.save();
+      storage.saveToStorage();
       expect(options.storage.setItem).toHaveBeenCalled();
       expect(options.storage.setItem.calls.argsFor(0)[0]).toEqual(storage.id);
       expect(typeof options.storage.setItem.calls.argsFor(0)[1]).toEqual('object');
+    });
+
+    it('should reset unsaved change count', function(){
+      storage = new GroupedStorage(options);
+      spyOn(options.storage, 'setItem');
+      storage.options.unsavedChangeCount = 10;
+      storage.saveToStorage();
+      expect(options.storage.setItem).toHaveBeenCalled();
+      expect(storage.options.unsavedChangeCount).toEqual(0);
     });
   });
 

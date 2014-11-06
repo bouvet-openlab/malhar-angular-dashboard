@@ -1,22 +1,22 @@
 /**
- * Created by eibel on 24.10.2014.
+ * Created by EIBEL on 06.11.2014.
  */
-
 'use strict';
 
-angular.module('app').controller('GroupedLayoutsDemoCtrl',
+angular.module('app').controller('GroupedLayoutsHomeReadonlyDemoCtrl',
   function ($scope, $interval, $window, widgetDefinitions, defaultWidgets) {
 
     $scope.groupOptions = {
       widgetButtons: true,
-      storageId: 'demo-grouped-layouts',
+      storageId: 'demo-grouped-layouts-home-readonly',
       storage: $window.localStorage,
       storageHash: 'fs4df4d51',
       widgetDefinitions: widgetDefinitions,
       defaultWidgets: defaultWidgets,
       lockDefaultLayouts: true,
-      explicitSave: false,
+      explicitSave: true,
       defaultGroupLayouts: {
+        home: {title: 'Start', id: 1},
         groups: [
           {
             id: 1,
@@ -38,6 +38,10 @@ angular.module('app').controller('GroupedLayoutsDemoCtrl',
       $scope.randomValue = Math.random();
     }, 500);
 
-    console.log($window.localStorage.getItem('demo-grouped-layouts'));
+    $scope.readonly = true;
+
+    $scope.toggle = function(val){
+      $scope.readonly = val;
+    };
   }
 );

@@ -78,6 +78,12 @@ angular.module('app', [
             title: 'grouped layouts with home',
             description: 'This demo showcases dashboard layouts grouped with a home layout'
         })
+        .when('/layouts/grouped-layouts-readonly', {
+            templateUrl: 'groupedLayoutsReadonly.html',
+            controller: 'GroupedLayoutsHomeReadonlyDemoCtrl',
+            title: 'grouped layouts readonly',
+            description: 'This demo showcases dashboard layouts grouped with a home layout in readonly state and possibility of changing to edit mode'
+        })
       .otherwise({
         redirectTo: '/'
       });

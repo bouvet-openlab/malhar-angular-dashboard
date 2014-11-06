@@ -256,6 +256,14 @@ angular.module('ui.dashboard')
         },
 
         save: function () {
+          this.options.unsavedChangeCount++;
+
+          if (!this.explicitSave) {
+            this.saveToStorage();
+          }
+        },
+
+        saveToStorage: function () {
           var state = this._serializeGroups();
 
           state.states = this.states;
@@ -266,6 +274,7 @@ angular.module('ui.dashboard')
           }
 
           this.storage.setItem(this.id, state);
+          this.options.unsavedChangeCount = 0;
         },
 
         clear: function () {

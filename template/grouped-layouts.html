@@ -1,4 +1,4 @@
-<tabset ui-sortable="sortableOptions" ng-model="groups">
+<tabset ui-sortable="sortableOptions" ng-model="groups" id="editableGroupedLayouts">
     <tab ng-if="homeLayout" active="homeLayout.active">
         <tab-heading>
             <tab-heading>
@@ -94,6 +94,13 @@
             <a ng-click="createGroup()">
                 <span class="glyphicon glyphicon-plus"></span> Group
             </a>
+        </tab-heading>
+    </tab>
+    <tab disabled="true" ng-if="explicitSave">
+        <tab-heading>
+            <button class="btn btn-success" ng-class="{disabled: options.unsavedChangeCount === 0}" ng-click="saveToStorage()">
+                save ({{options.unsavedChangeCount}} changes)
+            </button>
         </tab-heading>
     </tab>
 </tabset>
