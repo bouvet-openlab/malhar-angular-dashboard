@@ -39,6 +39,7 @@ angular.module('ui.dashboard')
         this.explicitSave = options.explicitSave;
         this.defaultGroupLayouts = options.defaultGroupLayouts;
         this.defaultWidgets = options.defaultWidgets;
+        this.isReadonly = options.isReadonly;
         this.settingsModalOptions = options.settingsModalOptions; // not red?
         this.onSettingsClose = options.onSettingsClose; // not red?
         this.onSettingsDismiss = options.onSettingsDismiss; // not red?
@@ -256,10 +257,12 @@ angular.module('ui.dashboard')
         },
 
         save: function () {
-          this.options.unsavedChangeCount++;
+          if (!this.isReadonly) {
+            this.options.unsavedChangeCount++;
 
-          if (!this.explicitSave) {
-            this.saveToStorage();
+            if (!this.explicitSave) {
+              this.saveToStorage();
+            }
           }
         },
 

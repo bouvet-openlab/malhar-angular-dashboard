@@ -33,6 +33,7 @@ describe('GroupedStorage service', function () {
 
         }
       },
+      isReadonly: false,
       defaultGroupLayouts: {
         homeLayout: {
           id: 10,
@@ -153,6 +154,7 @@ describe('GroupedStorage service', function () {
         defaultLayouts: 'defaultLayouts',
         widgetButtons: 'widgetButtons',
         explicitSave: 'explicitSave',
+        isReadonly: 'isReadonly',
         settingsModalOptions: {optionProp: 'something'},
         onSettingsClose: function () {
 
@@ -1388,6 +1390,19 @@ describe('GroupedStorage service', function () {
       storage.save();
       storage.save();
       expect(storage.options.unsavedChangeCount).toEqual(4);
+    });
+
+    it('should do nothing if isReadonly', function(){
+      options.isReadonly = true;
+      storage = new GroupedStorage(options);
+      spyOn(storage, 'saveToStorage').and.callThrough();
+      storage.options.unsavedChangeCount = 0;
+
+      storage.options.unsavedChangeCount = 0;
+      storage.save();
+      expect(storage.options.unsavedChangeCount).toEqual(0);
+
+      expect(storage.saveToStorage).not.toHaveBeenCalled();
     });
 
     it('should call saveToStorage if explicit save is false', function(){

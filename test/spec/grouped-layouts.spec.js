@@ -134,11 +134,13 @@ describe('Directive: grouped-layouts', function(){
       expect(element.find('div#editableGroupedLayouts').length).toEqual(1, 'Should contain div with id editableGroupedLayouts');
     });
 
-    it('should be able compile readonly template', inject(function ($compile) {
-      var customElement = $compile('<div grouped-layouts="dashboardOptions" is-readonly></div>')($rootScope);
+    it('should be able to compile readonly template', inject(function ($compile) {
+      var customElement = $compile('<div grouped-layouts="dashboardOptions" is-readonly="true"></div>')($rootScope);
       $rootScope.$digest();
+      childScope = customElement.scope();
 
       expect(customElement.find('div#readonlyGroupedLayouts').length).toEqual(1, 'Should contain div with id readonlyGroupedLayouts');
+      expect(childScope.options.isReadonly).toBe(true);
     }));
 
     it('should be able to use a different grouped-layouts template', inject(function ($compile, $templateCache) {

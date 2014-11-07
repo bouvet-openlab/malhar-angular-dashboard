@@ -458,12 +458,14 @@ angular.module('ui.dashboard')
       return {
         scope: true,
         templateUrl: function (element, attr) {
-          var defaultTemplate = attr.isReadonly === 'true' ? "template/grouped-layouts-readonly.html" : 'template/grouped-layouts.html';
+          var defaultTemplate = attr.isReadonly === 'true' ? 'template/grouped-layouts-readonly.html' : 'template/grouped-layouts.html';
 
           return attr.templateUrl ? attr.templateUrl : defaultTemplate;
         },
         link: function (scope, element, attrs) {
           scope.options = scope.$eval(attrs.groupedLayouts);
+
+          scope.options.isReadonly = attrs.isReadonly === 'true';
 
           var groupedStorage = new GroupedStorage(scope.options);
 
@@ -749,6 +751,7 @@ angular.module('ui.dashboard')
         this.explicitSave = options.explicitSave;
         this.defaultGroupLayouts = options.defaultGroupLayouts;
         this.defaultWidgets = options.defaultWidgets;
+        this.isReadonly = options.isReadonly;
         this.settingsModalOptions = options.settingsModalOptions; // not red?
         this.onSettingsClose = options.onSettingsClose; // not red?
         this.onSettingsDismiss = options.onSettingsDismiss; // not red?
@@ -966,10 +969,12 @@ angular.module('ui.dashboard')
         },
 
         save: function () {
-          this.options.unsavedChangeCount++;
+          if (!this.isReadonly) {
+            this.options.unsavedChangeCount++;
 
-          if (!this.explicitSave) {
-            this.saveToStorage();
+            if (!this.explicitSave) {
+              this.saveToStorage();
+            }
           }
         },
 
@@ -2416,6 +2421,36 @@ angular.module("ui.dashboard").run(["$templateCache", function($templateCache) {
     "</div>"
   );
 
+  $templateCache.put("template/dashboardReadonly.html",
+    "<div>\r" +
+    "\n" +
+    "    <div class=\"dashboard-widget-area\">\r" +
+    "\n" +
+    "        <div ng-repeat=\"widget in widgets\" ng-style=\"widget.containerStyle\" class=\"widget-container\" widget>\r" +
+    "\n" +
+    "            <div class=\"widget panel panel-default\">\r" +
+    "\n" +
+    "                <div class=\"widget-header panel-heading\">\r" +
+    "\n" +
+    "                    <h3 class=\"panel-title\">\r" +
+    "\n" +
+    "                        <span class=\"widget-title\">{{widget.title}}</span>\r" +
+    "\n" +
+    "                    </h3>\r" +
+    "\n" +
+    "                </div>\r" +
+    "\n" +
+    "                <div class=\"panel-body widget-content\" ng-style=\"widget.contentStyle\"></div>\r" +
+    "\n" +
+    "            </div>\r" +
+    "\n" +
+    "        </div>\r" +
+    "\n" +
+    "    </div>\r" +
+    "\n" +
+    "</div>"
+  );
+
   $templateCache.put("template/grouped-layouts-readonly.html",
     "<tabset ui-sortable=\"sortableOptions\" ng-model=\"groups\" id=\"readonlyGroupedLayouts\">\r" +
     "\n" +
@@ -2499,7 +2534,7 @@ angular.module("ui.dashboard").run(["$templateCache", function($templateCache) {
     "\n" +
     "<div ng-repeat=\"layout in getAllLayouts() | filter:{active:true}\" dashboard=\"layout.dashboard\"\r" +
     "\n" +
-    "     template-url=\"template/dashboard.html\"></div>"
+    "     template-url=\"template/dashboardReadonly.html\"></div>"
   );
 
   $templateCache.put("template/grouped-layouts.html",

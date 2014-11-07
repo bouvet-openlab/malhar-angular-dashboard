@@ -1,0 +1,14 @@
+<div>
+    <div class="dashboard-widget-area">
+        <div ng-repeat="widget in widgets" ng-style="widget.containerStyle" class="widget-container" widget>
+            <div class="widget panel panel-default">
+                <div class="widget-header panel-heading">
+                    <h3 class="panel-title">
+                        <span class="widget-title">{{widget.title}}</span>
+                    </h3>
+                </div>
+                <div class="panel-body widget-content" ng-style="widget.contentStyle"></div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -11,12 +11,14 @@ angular.module('ui.dashboard')
       return {
         scope: true,
         templateUrl: function (element, attr) {
-          var defaultTemplate = attr.isReadonly === 'true' ? "template/grouped-layouts-readonly.html" : 'template/grouped-layouts.html';
+          var defaultTemplate = attr.isReadonly === 'true' ? 'template/grouped-layouts-readonly.html' : 'template/grouped-layouts.html';
 
           return attr.templateUrl ? attr.templateUrl : defaultTemplate;
         },
         link: function (scope, element, attrs) {
           scope.options = scope.$eval(attrs.groupedLayouts);
+
+          scope.options.isReadonly = attrs.isReadonly === 'true';
 
           var groupedStorage = new GroupedStorage(scope.options);
 
