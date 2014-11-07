@@ -467,16 +467,20 @@ angular.module('ui.dashboard')
 
           scope.options.isReadonly = attrs.isReadonly === 'true';
 
-          var groupedStorage = new GroupedStorage(scope.options);
+          scope.groupedStorage = new GroupedStorage(scope.options);
 
-          scope.groups = groupedStorage.groups;
-          scope.explicitSave = groupedStorage.explicitSave;
+          scope.groups = scope.groupedStorage.groups;
+          scope.explicitSave = scope.groupedStorage.explicitSave;
 
           scope.bindHomeLayout = function () {
-            scope.homeLayout = groupedStorage.homeLayout;
+            scope.homeLayout = scope.groupedStorage.homeLayout;
           };
 
           scope.bindHomeLayout();
+
+          scope.$watch('groupedStorage.homeLayout', function() {
+            scope.bindHomeLayout();
+          });
 
           scope.getAllLayouts = function () {
             var layouts = [];
@@ -509,42 +513,42 @@ angular.module('ui.dashboard')
           scope.saveTitleEdit = function (objectEdited) {
             objectEdited.editingTitle = false;
 
-            groupedStorage.save();
+            scope.groupedStorage.save();
           };
 
           scope.createGroup = function () {
             var group = {groupTitle: 'Custom group'};
 
-            groupedStorage.add(group);
-            groupedStorage.save();
+            scope.groupedStorage.add(group);
+            scope.groupedStorage.save();
 
             return group;
           };
 
           scope.removeGroup = function (group) {
-            groupedStorage.remove(group);
-            groupedStorage.save();
+            scope.groupedStorage.remove(group);
+            scope.groupedStorage.save();
           };
 
           scope.createLayoutGroup = function (group) {
             var layoutGroup = {layoutGroupTitle: 'Custom layout group'};
 
-            groupedStorage.addLayoutGroup(group, layoutGroup);
-            groupedStorage.save();
+            scope.groupedStorage.addLayoutGroup(group, layoutGroup);
+            scope.groupedStorage.save();
 
             return layoutGroup;
           };
 
           scope.removeLayoutGroup = function (layoutGroup) {
-            groupedStorage.removeLayoutGroup(layoutGroup);
-            groupedStorage.save();
+            scope.groupedStorage.removeLayoutGroup(layoutGroup);
+            scope.groupedStorage.save();
           };
 
           scope.createLayout = function (layoutGroup) {
             var layout = {title: 'Custom', active: true}; // TODO Add layout or make active should handle
 
-            groupedStorage.addLayout(layoutGroup, layout);
-            groupedStorage.save();
+            scope.groupedStorage.addLayout(layoutGroup, layout);
+            scope.groupedStorage.save();
 
             scope._makeLayoutActive(layout);
 
@@ -552,15 +556,15 @@ angular.module('ui.dashboard')
           };
 
           scope.removeLayout = function (layout) {
-            groupedStorage.removeLayout(layout);
-            groupedStorage.save();
+            scope.groupedStorage.removeLayout(layout);
+            scope.groupedStorage.save();
           };
 
           scope.createHomeLayout = function () {
             var layout = {title: 'Home', active: true};
 
-            groupedStorage.addHomeLayout(layout);
-            groupedStorage.save();
+            scope.groupedStorage.addHomeLayout(layout);
+            scope.groupedStorage.save();
 
             scope.bindHomeLayout();
 
@@ -570,18 +574,18 @@ angular.module('ui.dashboard')
           };
 
           scope.removeHomeLayout = function () {
-            groupedStorage.removeHomeLayout();
-            groupedStorage.save();
+            scope.groupedStorage.removeHomeLayout();
+            scope.groupedStorage.save();
 
             scope.bindHomeLayout();
           };
 
           scope.saveToStorage = function () {
-            groupedStorage.saveToStorage();
+            scope.groupedStorage.saveToStorage();
           };
 
           scope.makeLayoutActive = function (layout) {
-            var current = groupedStorage.getActiveLayout();
+            var current = scope.groupedStorage.getActiveLayout();
 
             if (current && current.dashboard.unsavedChangeCount) {
               var modalInstance = $modal.open({
@@ -617,26 +621,26 @@ angular.module('ui.dashboard')
                 l.active = true;
               }
             });
-            groupedStorage._ensureActiveLayout();
-            groupedStorage.save();
+            scope.groupedStorage._ensureActiveLayout();
+            scope.groupedStorage.save();
           };
 
           scope.options.addWidget = function () {
-            var layout = groupedStorage.getActiveLayout();
+            var layout = scope.groupedStorage.getActiveLayout();
             if (layout) {
               layout.dashboard.addWidget.apply(layout.dashboard, arguments);
             }
           };
 
           scope.options.loadWidgets = function () {
-            var layout = groupedStorage.getActiveLayout();
+            var layout = scope.groupedStorage.getActiveLayout();
             if (layout) {
               layout.dashboard.loadWidgets.apply(layout.dashboard, arguments);
             }
           };
 
           scope.options.saveDashboard = function () {
-            var layout = groupedStorage.getActiveLayout();
+            var layout = scope.groupedStorage.getActiveLayout();
             if (layout) {
               layout.dashboard.saveDashboard.apply(layout.dashboard, arguments);
             }

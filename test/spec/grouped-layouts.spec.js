@@ -171,6 +171,10 @@ describe('Directive: grouped-layouts', function(){
       expect(childScope.explicitSave).toBe(true);
     }));
 
+    it('it should bind homeLayout also when resolved by promise', function(){
+
+    })
+
   });
 
   describe('the editTitle method', function(){
