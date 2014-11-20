@@ -189,7 +189,7 @@ angular.module('ui.dashboard')
             homeLayout.dashboard.stringifyStorage = false;
             homeLayout.dashboard.defaultWidgets = homeLayout.defaultWidgets || this.defaultWidgets;
             homeLayout.dashboard.widgetButtons = this.widgetButtons;
-            homeLayout.dashboard.explicitSave = this.explicitSave;
+            homeLayout.dashboard.explicitSave = false;
             this.homeLayout = homeLayout;
           }
         },
