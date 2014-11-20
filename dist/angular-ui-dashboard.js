@@ -933,7 +933,7 @@ angular.module('ui.dashboard')
               layout.dashboard.stringifyStorage = false;
               layout.dashboard.defaultWidgets = layout.defaultWidgets || self.defaultWidgets;
               layout.dashboard.widgetButtons = self.widgetButtons;
-              layout.dashboard.explicitSave = self.explicitSave;
+              layout.dashboard.explicitSave = false;
               layoutGroup.layouts.push(layout);
 
               //this.states[layout.id] = {};
