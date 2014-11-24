@@ -54,7 +54,7 @@ describe('Factory: LayoutStorage', function () {
 
         }
       };
-      storage = new LayoutStorage(options);
+      storage = new LayoutStorage(options, true);
     });
 
     it('should provide an empty implementation of storage if it is not provided', function() {
@@ -97,7 +97,7 @@ describe('Factory: LayoutStorage', function () {
 
     it('should allow stringify to be overridden by option', function() {
       options.stringifyStorage = false;
-      storage = new LayoutStorage(options);
+      storage = new LayoutStorage(options, true);
       expect(storage.stringifyStorage).toEqual(false);
     });
 
@@ -108,7 +108,7 @@ describe('Factory: LayoutStorage', function () {
 
     it('should call load', function() {
       spyOn(LayoutStorage.prototype, 'load');
-      storage = new LayoutStorage(options);
+      storage = new LayoutStorage(options, true);
       expect(LayoutStorage.prototype.load).toHaveBeenCalled();
     });
 
@@ -251,7 +251,7 @@ describe('Factory: LayoutStorage', function () {
 
     it('should not try to JSON.parse the result if stringifyStorage is false.', function() {
       options.stringifyStorage = false;
-      storage = new LayoutStorage(options);
+      storage = new LayoutStorage(options, true);
       spyOn(options.storage, 'getItem').and.returnValue({
         storageHash: 'ds5f9d1f',
         layouts: [
@@ -322,7 +322,7 @@ describe('Factory: LayoutStorage', function () {
 
     it('should look for defaultWidgets on storage options if not supplied on layout definition', function() {
       options.defaultWidgets = [{name: 'a'}, {name: 'b'}, {name: 'c'}];
-      storage = new LayoutStorage(options);
+      storage = new LayoutStorage(options, true);
 
       var newLayouts = [ { title: 'my-layout', defaultWidgets: [] }, { title: 'my-layout-2' } ];
       storage.add(newLayouts);
@@ -332,7 +332,7 @@ describe('Factory: LayoutStorage', function () {
 
     it('should use defaultWidgets if supplied in the layout definition', function() {
       options.defaultWidgets = [{name: 'a'}, {name: 'b'}, {name: 'c'}];
-      storage = new LayoutStorage(options);
+      storage = new LayoutStorage(options, true);
 
       var newLayouts = [ { title: 'my-layout', defaultWidgets: [] }, { title: 'my-layout-2' } ];
       storage.add(newLayouts);
@@ -470,7 +470,7 @@ describe('Factory: LayoutStorage', function () {
 
     it('should call options.storage.setItem with an object when stringifyStorage is false', function() {
       options.stringifyStorage = false;
-      storage = new LayoutStorage(options);
+      storage = new LayoutStorage(options, true);
       spyOn(options.storage, 'setItem' );
       storage.save();
       expect(options.storage.setItem).toHaveBeenCalled();

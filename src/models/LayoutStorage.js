@@ -17,9 +17,11 @@
 'use strict';
 
 angular.module('ui.dashboard')
-  .service('LayoutStorage', function() {
+  .factory('LayoutStorage', function() {
+    var instance;
 
     var noopStorage = {
+
       setItem: function() {
 
       },
@@ -31,7 +33,11 @@ angular.module('ui.dashboard')
       }
     };
 
-    function LayoutStorage(options) {
+    function LayoutStorage(options, forceNewObject) {
+      if (instance && !forceNewObject) {
+        // Return singleton instance
+        return instance;
+      }
 
       var defaults = {
         storage: noopStorage,
@@ -62,6 +68,8 @@ angular.module('ui.dashboard')
       this.states = {};
       this.load();
       this._ensureActiveLayout();
+
+      instance = this;
     }
 
     LayoutStorage.prototype = {
